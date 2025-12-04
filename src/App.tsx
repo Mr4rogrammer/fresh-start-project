@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import TradeList from "./pages/TradeList";
 import Notes from "./pages/Notes";
 import Links from "./pages/Links";
+import Checklists from "./pages/Checklists";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +35,7 @@ const App = () => (
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/trades" element={<TradeList />} />
                 <Route path="/notes" element={<Notes />} />
+                <Route path="/checklists" element={<Checklists />} />
                 <Route path="/links" element={<Links />} />
                 <Route path="/profile" element={<Profile />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

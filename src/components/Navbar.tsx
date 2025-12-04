@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Calendar, BarChart3, LogOut, Moon, Sun, Menu, Home, ChevronDown, List, FileText, Link as LinkIcon } from "lucide-react";
+import { Calendar, BarChart3, LogOut, Moon, Sun, Menu, Home, ChevronDown, List, FileText, Link as LinkIcon, CheckSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/ThemeProvider";
 import { useChallenge } from "@/contexts/ChallengeContext";
@@ -133,6 +133,9 @@ export const Navbar = () => {
                       <DropdownMenuItem onClick={() => navigate("/notes")} className="cursor-pointer py-3">
                         Notes
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/checklists")} className="cursor-pointer py-3">
+                        Checklists
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/links")} className="cursor-pointer py-3">
                         Links
                       </DropdownMenuItem>
@@ -253,6 +256,10 @@ export const Navbar = () => {
                 <DropdownMenuItem onClick={() => navigate("/notes")} className="cursor-pointer py-3">
                   <FileText className="h-4 w-4 mr-2" />
                   Notes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/checklists")} className="cursor-pointer py-3">
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Checklists
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/links")} className="cursor-pointer py-3">
                   <LinkIcon className="h-4 w-4 mr-2" />
