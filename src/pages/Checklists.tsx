@@ -5,25 +5,199 @@ import { ref, push, remove, update, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Plus, Edit, Search, Eye, CheckSquare, ListChecks } from "lucide-react";
+import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2 } from "lucide-react";
 import { toast } from "sonner";
-import { ChecklistForm } from "@/components/ChecklistForm";
-import { ChecklistViewModal } from "@/components/ChecklistViewModal";
 import { Input } from "@/components/ui/input";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 import { Checklist, ChecklistItem } from "@/types/checklist";
+import { cn } from "@/lib/utils";
+
+// Checklist Item Row Component
+const ChecklistItemRow = ({
+  item,
+  onToggle,
+  onAddChild,
+  onDelete,
+  onEdit,
+  level = 0,
+}: {
+  item: ChecklistItem;
+  onToggle: (id: string) => void;
+  onAddChild: (parentId: string, text: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (id: string, text: string) => void;
+  level?: number;
+}) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isAddingChild, setIsAddingChild] = useState(false);
+  const [newChildText, setNewChildText] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(item.text);
+  const hasChildren = item.children && item.children.length > 0;
+
+  const handleAddChild = () => {
+    if (newChildText.trim()) {
+      onAddChild(item.id, newChildText.trim());
+      setNewChildText("");
+      setIsAddingChild(false);
+    }
+  };
+
+  const handleEdit = () => {
+    if (editText.trim()) {
+      onEdit(item.id, editText.trim());
+      setIsEditing(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      {/* Vertical line connector for nested items */}
+      {level > 0 && (
+        <div
+          className="absolute left-0 top-0 bottom-0 w-px bg-border"
+          style={{ left: `${(level - 1) * 24 + 12}px` }}
+        />
+      )}
+      
+      <div
+        className={cn(
+          "flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors group",
+          item.completed && "opacity-60"
+        )}
+        style={{ paddingLeft: `${level * 24 + 8}px` }}
+      >
+        {/* Expand/Collapse button */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={cn(
+            "w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors",
+            !hasChildren && "invisible"
+          )}
+        >
+          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+
+        {/* Checkbox */}
+        <button
+          onClick={() => onToggle(item.id)}
+          className={cn(
+            "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
+            item.completed
+              ? "bg-emerald-500 border-emerald-500 text-white"
+              : "border-muted-foreground/40 hover:border-emerald-500"
+          )}
+        >
+          {item.completed && <Check className="h-3 w-3" />}
+        </button>
+
+        {/* Item text or edit input */}
+        {isEditing ? (
+          <Input
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleEdit();
+              if (e.key === "Escape") setIsEditing(false);
+            }}
+            onBlur={handleEdit}
+            className="h-7 flex-1"
+            autoFocus
+          />
+        ) : (
+          <span
+            className={cn(
+              "flex-1 text-sm cursor-pointer",
+              item.completed && "line-through text-muted-foreground"
+            )}
+            onDoubleClick={() => setIsEditing(true)}
+          >
+            {item.text}
+          </span>
+        )}
+
+        {/* Action buttons - visible on hover */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsAddingChild(true)}
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-emerald-500"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(item.id)}
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Add child input */}
+      {isAddingChild && (
+        <div className="flex items-center gap-2 py-2" style={{ paddingLeft: `${(level + 1) * 24 + 36}px` }}>
+          <Input
+            value={newChildText}
+            onChange={(e) => setNewChildText(e.target.value)}
+            placeholder="Add sub-item..."
+            className="h-8 flex-1"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddChild();
+              if (e.key === "Escape") setIsAddingChild(false);
+            }}
+            autoFocus
+          />
+          <Button size="sm" onClick={handleAddChild} className="h-8">
+            Add
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setIsAddingChild(false)} className="h-8">
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {/* Children */}
+      {hasChildren && isExpanded && (
+        <div>
+          {item.children.map((child) => (
+            <ChecklistItemRow
+              key={child.id}
+              item={child}
+              onToggle={onToggle}
+              onAddChild={onAddChild}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              level={level + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Checklists = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingChecklist, setEditingChecklist] = useState<Checklist | null>(null);
-  const [viewingChecklist, setViewingChecklist] = useState<Checklist | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [newItemText, setNewItemText] = useState("");
 
   const {
     isVerificationRequired,
@@ -59,6 +233,9 @@ const Checklists = () => {
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
           setChecklists(checklistsArray);
+          if (checklistsArray.length > 0 && !selectedChecklist) {
+            setSelectedChecklist(checklistsArray[0]);
+          }
         } else {
           setChecklists([]);
         }
@@ -72,80 +249,6 @@ const Checklists = () => {
 
     fetchChecklists();
   }, [user]);
-
-  const handleAddChecklist = async (title: string, items: ChecklistItem[]) => {
-    if (!user) {
-      toast.error("You must be signed in");
-      return;
-    }
-
-    try {
-      const checklistsRef = ref(db, `users/${user.uid}/checklists`);
-      const newChecklist = {
-        title,
-        items,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const newRef = await push(checklistsRef, newChecklist);
-
-      setChecklists(prev => [{ id: newRef.key!, ...newChecklist }, ...prev]);
-      toast.success("Checklist created successfully");
-    } catch (error) {
-      console.error("Error creating checklist:", error);
-      toast.error("Failed to create checklist");
-    }
-  };
-
-  const handleEditChecklist = async (title: string, items: ChecklistItem[]) => {
-    if (!user || !editingChecklist) return;
-
-    const performEdit = async () => {
-      try {
-        const checklistRef = ref(db, `users/${user.uid}/checklists/${editingChecklist.id}`);
-        await update(checklistRef, {
-          title,
-          items,
-          updatedAt: new Date().toISOString(),
-        });
-
-        setChecklists(prev =>
-          prev.map((cl) =>
-            cl.id === editingChecklist.id
-              ? { ...cl, title, items, updatedAt: new Date().toISOString() }
-              : cl
-          )
-        );
-
-        toast.success("Checklist updated successfully");
-        setEditingChecklist(null);
-      } catch (error) {
-        console.error("Error updating checklist:", error);
-        toast.error("Failed to update checklist");
-      }
-    };
-
-    requireVerification(performEdit);
-  };
-
-  const deleteChecklist = async (checklistId: string) => {
-    if (!user) return;
-
-    const performDelete = async () => {
-      try {
-        const checklistRef = ref(db, `users/${user.uid}/checklists/${checklistId}`);
-        await remove(checklistRef);
-
-        setChecklists(prev => prev.filter((cl) => cl.id !== checklistId));
-        toast.success("Checklist deleted successfully");
-      } catch (error) {
-        toast.error("Failed to delete checklist");
-      }
-    };
-
-    requireVerification(performDelete);
-  };
 
   const countItems = (items: ChecklistItem[]): { total: number; completed: number } => {
     let total = 0;
@@ -165,6 +268,180 @@ const Checklists = () => {
     return { total, completed };
   };
 
+  const createNewChecklist = async () => {
+    if (!user) return;
+
+    try {
+      const checklistsRef = ref(db, `users/${user.uid}/checklists`);
+      const newChecklist = {
+        title: "New Checklist",
+        items: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const newRef = await push(checklistsRef, newChecklist);
+      const createdChecklist = { id: newRef.key!, ...newChecklist };
+      setChecklists((prev) => [createdChecklist, ...prev]);
+      setSelectedChecklist(createdChecklist);
+      setIsEditingTitle(true);
+      setEditedTitle("New Checklist");
+      toast.success("Checklist created");
+    } catch (error) {
+      toast.error("Failed to create checklist");
+    }
+  };
+
+  const updateChecklist = async (updatedChecklist: Checklist) => {
+    if (!user) return;
+
+    try {
+      const checklistRef = ref(db, `users/${user.uid}/checklists/${updatedChecklist.id}`);
+      await update(checklistRef, {
+        title: updatedChecklist.title,
+        items: updatedChecklist.items,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setChecklists((prev) =>
+        prev.map((cl) => (cl.id === updatedChecklist.id ? updatedChecklist : cl))
+      );
+      setSelectedChecklist(updatedChecklist);
+    } catch (error) {
+      toast.error("Failed to update checklist");
+    }
+  };
+
+  const deleteChecklist = async () => {
+    if (!user || !selectedChecklist) return;
+
+    const performDelete = async () => {
+      try {
+        const checklistRef = ref(db, `users/${user.uid}/checklists/${selectedChecklist.id}`);
+        await remove(checklistRef);
+
+        const remaining = checklists.filter((cl) => cl.id !== selectedChecklist.id);
+        setChecklists(remaining);
+        setSelectedChecklist(remaining.length > 0 ? remaining[0] : null);
+        toast.success("Checklist deleted");
+      } catch (error) {
+        toast.error("Failed to delete checklist");
+      }
+    };
+
+    requireVerification(performDelete);
+  };
+
+  const handleTitleSave = () => {
+    if (!selectedChecklist || !editedTitle.trim()) return;
+    updateChecklist({ ...selectedChecklist, title: editedTitle.trim() });
+    setIsEditingTitle(false);
+  };
+
+  const handleAddItem = () => {
+    if (!selectedChecklist || !newItemText.trim()) return;
+
+    const newItem: ChecklistItem = {
+      id: Date.now().toString(),
+      text: newItemText.trim(),
+      completed: false,
+      children: [],
+    };
+
+    updateChecklist({
+      ...selectedChecklist,
+      items: [...selectedChecklist.items, newItem],
+    });
+    setNewItemText("");
+  };
+
+  // Deep clone helper
+  const deepClone = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj));
+
+  // Recursive update helper
+  const updateItemById = (
+    items: ChecklistItem[],
+    id: string,
+    updater: (item: ChecklistItem) => ChecklistItem | null
+  ): ChecklistItem[] => {
+    return items
+      .map((item) => {
+        if (item.id === id) {
+          return updater(item);
+        }
+        if (item.children && item.children.length > 0) {
+          return {
+            ...item,
+            children: updateItemById(item.children, id, updater),
+          };
+        }
+        return item;
+      })
+      .filter((item): item is ChecklistItem => item !== null);
+  };
+
+  const handleToggleItem = (itemId: string) => {
+    if (!selectedChecklist) return;
+
+    const updatedItems = updateItemById(deepClone(selectedChecklist.items), itemId, (item) => ({
+      ...item,
+      completed: !item.completed,
+    }));
+
+    updateChecklist({ ...selectedChecklist, items: updatedItems });
+  };
+
+  const handleAddChildItem = (parentId: string, text: string) => {
+    if (!selectedChecklist) return;
+
+    const newChild: ChecklistItem = {
+      id: Date.now().toString(),
+      text,
+      completed: false,
+      children: [],
+    };
+
+    const updatedItems = updateItemById(deepClone(selectedChecklist.items), parentId, (item) => ({
+      ...item,
+      children: [...(item.children || []), newChild],
+    }));
+
+    updateChecklist({ ...selectedChecklist, items: updatedItems });
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    if (!selectedChecklist) return;
+
+    const updatedItems = updateItemById(deepClone(selectedChecklist.items), itemId, () => null);
+    updateChecklist({ ...selectedChecklist, items: updatedItems });
+  };
+
+  const handleEditItem = (itemId: string, newText: string) => {
+    if (!selectedChecklist) return;
+
+    const updatedItems = updateItemById(deepClone(selectedChecklist.items), itemId, (item) => ({
+      ...item,
+      text: newText,
+    }));
+
+    updateChecklist({ ...selectedChecklist, items: updatedItems });
+  };
+
+  const handleResetChecks = () => {
+    if (!selectedChecklist) return;
+
+    const resetItems = (items: ChecklistItem[]): ChecklistItem[] => {
+      return items.map((item) => ({
+        ...item,
+        completed: false,
+        children: item.children ? resetItems(item.children) : [],
+      }));
+    };
+
+    updateChecklist({ ...selectedChecklist, items: resetItems(selectedChecklist.items) });
+    toast.success("All items unchecked");
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -178,176 +455,177 @@ const Checklists = () => {
 
   if (!user) return null;
 
-  const filteredChecklists = checklists.filter((cl) =>
-    cl.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const selectedStats = selectedChecklist ? countItems(selectedChecklist.items) : { total: 0, completed: 0 };
+  const progress = selectedStats.total > 0 ? Math.round((selectedStats.completed / selectedStats.total) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div className="space-y-1">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary via-primary/80 to-accent bg-clip-text text-transparent">
-              My Checklists
-            </h1>
-            <p className="text-muted-foreground">
-              Organize your tasks with multi-level checklists
-            </p>
+      <div className="flex h-[calc(100vh-64px)]">
+        {/* Sidebar */}
+        <div className="w-80 border-r bg-muted/30 flex flex-col">
+          <div className="p-4 border-b">
+            <Button onClick={createNewChecklist} className="w-full gap-2" variant="default">
+              <Plus className="h-4 w-4" />
+              New Checklist
+            </Button>
           </div>
-          <Button
-            onClick={() => {
-              setEditingChecklist(null);
-              setIsFormOpen(true);
-            }}
-            size="lg"
-            className="gap-2 shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all"
-          >
-            <Plus className="h-5 w-5" />
-            New Checklist
-          </Button>
+
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            {checklists.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                No checklists yet
+              </div>
+            ) : (
+              checklists.map((checklist) => {
+                const stats = countItems(checklist.items);
+                const isSelected = selectedChecklist?.id === checklist.id;
+
+                return (
+                  <button
+                    key={checklist.id}
+                    onClick={() => setSelectedChecklist(checklist)}
+                    className={cn(
+                      "w-full text-left p-3 rounded-lg transition-all",
+                      isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 shrink-0" />
+                      <span className="font-medium truncate">{checklist.title}</span>
+                    </div>
+                    <div className={cn(
+                      "text-xs mt-1",
+                      isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+                    )}>
+                      {stats.completed}/{stats.total} items
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search checklists..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11"
-            />
-          </div>
-        </div>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {selectedChecklist ? (
+            <>
+              {/* Header */}
+              <div className="p-6 border-b space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1 flex-1">
+                    {isEditingTitle ? (
+                      <Input
+                        value={editedTitle}
+                        onChange={(e) => setEditedTitle(e.target.value)}
+                        onBlur={handleTitleSave}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleTitleSave();
+                          if (e.key === "Escape") setIsEditingTitle(false);
+                        }}
+                        className="text-2xl font-bold h-auto py-1 px-2"
+                        autoFocus
+                      />
+                    ) : (
+                      <h1
+                        className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors inline-flex items-center gap-2"
+                        onClick={() => {
+                          setIsEditingTitle(true);
+                          setEditedTitle(selectedChecklist.title);
+                        }}
+                      >
+                        {selectedChecklist.title}
+                        <Edit2 className="h-4 w-4 opacity-50" />
+                      </h1>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Created {new Date(selectedChecklist.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
 
-        {/* Checklists Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {checklists.length === 0 ? (
-            <Card className="col-span-full border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <ListChecks className="h-10 w-10 text-primary" />
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handleResetChecks} className="gap-1.5">
+                      <RotateCcw className="h-4 w-4" />
+                      Reset
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={deleteChecklist} className="gap-1.5">
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">No checklists yet</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Create your first checklist to start organizing tasks
-                </p>
-                <Button onClick={() => setIsFormOpen(true)} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create Checklist
-                </Button>
-              </CardContent>
-            </Card>
-          ) : filteredChecklists.length === 0 ? (
-            <Card className="col-span-full border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <Search className="h-10 w-10 text-muted-foreground" />
+
+                {/* Progress */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-medium text-emerald-500">
+                      {selectedStats.completed}/{selectedStats.total} ({progress}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">No results found</h3>
-                <p className="text-muted-foreground text-center">
-                  No checklists match "{searchQuery}"
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+
+              {/* Items */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {/* Add new item */}
+                <div className="flex items-center gap-2 mb-4">
+                  <Input
+                    value={newItemText}
+                    onChange={(e) => setNewItemText(e.target.value)}
+                    placeholder="Add new item..."
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddItem();
+                    }}
+                  />
+                  <Button onClick={handleAddItem} disabled={!newItemText.trim()}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add
+                  </Button>
+                </div>
+
+                {/* Checklist items */}
+                <div className="space-y-1">
+                  {selectedChecklist.items.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <ListChecks className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>No items yet. Add your first item above.</p>
+                    </div>
+                  ) : (
+                    selectedChecklist.items.map((item) => (
+                      <ChecklistItemRow
+                        key={item.id}
+                        item={item}
+                        onToggle={handleToggleItem}
+                        onAddChild={handleAddChildItem}
+                        onDelete={handleDeleteItem}
+                        onEdit={handleEditItem}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
           ) : (
-            filteredChecklists.map((checklist, index) => {
-              const { total, completed } = countItems(checklist.items || []);
-              const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-              return (
-                <Card
-                  key={checklist.id}
-                  className="group hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-1 bg-card/80 backdrop-blur-sm border-border/50 hover:border-primary/30 overflow-hidden"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <CheckSquare className="h-5 w-5 text-primary shrink-0" />
-                        <span className="truncate">{checklist.title}</span>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    {/* Progress */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">
-                          {completed}/{total} ({progress}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-primary to-primary/70 h-full rounded-full transition-all duration-500"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Meta & Actions */}
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(checklist.createdAt).toLocaleDateString()}
-                      </span>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setViewingChecklist(checklist)}
-                          className="h-8 px-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingChecklist(checklist);
-                            setIsFormOpen(true);
-                          }}
-                          className="h-8 px-2"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteChecklist(checklist.id)}
-                          className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <ListChecks className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-lg">Select a checklist or create a new one</p>
+              </div>
+            </div>
           )}
         </div>
       </div>
-
-      <ChecklistForm
-        open={isFormOpen}
-        onClose={() => {
-          setIsFormOpen(false);
-          setEditingChecklist(null);
-        }}
-        onSave={editingChecklist ? handleEditChecklist : handleAddChecklist}
-        initialChecklist={editingChecklist}
-        mode={editingChecklist ? "edit" : "add"}
-      />
-
-      <ChecklistViewModal
-        checklist={viewingChecklist}
-        open={!!viewingChecklist}
-        onClose={() => setViewingChecklist(null)}
-      />
 
       <TotpVerificationModal
         open={isVerificationRequired}
