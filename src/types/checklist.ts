@@ -1,4 +1,4 @@
-// Checklist types for multi-level task management
+// Checklist types for multi-level task management system
 export interface ChecklistItem {
   id: string;
   text: string;
