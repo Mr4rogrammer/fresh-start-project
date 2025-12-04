@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checklist, ChecklistItem } from "@/types/checklist";
 import { ChecklistItemComponent } from "./ChecklistItemComponent";
-import { Plus } from "lucide-react";
+import { Plus, ListChecks } from "lucide-react";
 
 interface ChecklistFormProps {
   open: boolean;
@@ -16,6 +16,9 @@ interface ChecklistFormProps {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
+
+// Deep clone to avoid mutation issues
+const deepClone = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj));
 
 export const ChecklistForm = ({
   open,
@@ -29,52 +32,62 @@ export const ChecklistForm = ({
   const [newItemText, setNewItemText] = useState("");
 
   useEffect(() => {
-    if (initialChecklist) {
-      setTitle(initialChecklist.title);
-      setItems(initialChecklist.items || []);
-    } else {
-      setTitle("");
-      setItems([]);
+    if (open) {
+      if (initialChecklist) {
+        setTitle(initialChecklist.title);
+        setItems(deepClone(initialChecklist.items || []));
+      } else {
+        setTitle("");
+        setItems([]);
+      }
+      setNewItemText("");
     }
-    setNewItemText("");
   }, [initialChecklist, open]);
 
   const handleAddItem = () => {
     if (newItemText.trim()) {
-      setItems([
-        ...items,
-        {
-          id: generateId(),
-          text: newItemText.trim(),
-          completed: false,
-          children: [],
-        },
-      ]);
+      const newItem: ChecklistItem = {
+        id: generateId(),
+        text: newItemText.trim(),
+        completed: false,
+        children: [],
+      };
+      setItems(prev => [...prev, newItem]);
       setNewItemText("");
     }
   };
 
-  const findAndUpdateItem = (
-    items: ChecklistItem[],
+  // Recursive function to find and update an item by ID
+  const updateItemById = (
+    itemsList: ChecklistItem[],
     targetId: string,
     updater: (item: ChecklistItem) => ChecklistItem | null
   ): ChecklistItem[] => {
-    return items
-      .map((item) => {
-        if (item.id === targetId) {
-          return updater(item);
+    const result: ChecklistItem[] = [];
+    
+    for (const item of itemsList) {
+      if (item.id === targetId) {
+        const updated = updater(item);
+        if (updated !== null) {
+          result.push(updated);
         }
-        return {
+        // Item found and processed, skip to next
+      } else {
+        // Not the target, but check children
+        const updatedChildren = updateItemById(item.children || [], targetId, updater);
+        result.push({
           ...item,
-          children: findAndUpdateItem(item.children, targetId, updater),
-        };
-      })
-      .filter((item): item is ChecklistItem => item !== null);
+          children: updatedChildren,
+        });
+      }
+    }
+    
+    return result;
   };
 
   const handleToggle = (id: string) => {
-    setItems(
-      findAndUpdateItem(items, id, (item) => ({
+    setItems(prev => 
+      updateItemById(prev, id, (item) => ({
         ...item,
         completed: !item.completed,
       }))
@@ -82,29 +95,28 @@ export const ChecklistForm = ({
   };
 
   const handleAddChild = (parentId: string, text: string) => {
-    setItems(
-      findAndUpdateItem(items, parentId, (item) => ({
+    const newChild: ChecklistItem = {
+      id: generateId(),
+      text,
+      completed: false,
+      children: [],
+    };
+    
+    setItems(prev =>
+      updateItemById(prev, parentId, (item) => ({
         ...item,
-        children: [
-          ...item.children,
-          {
-            id: generateId(),
-            text,
-            completed: false,
-            children: [],
-          },
-        ],
+        children: [...(item.children || []), newChild],
       }))
     );
   };
 
   const handleDelete = (id: string) => {
-    setItems(findAndUpdateItem(items, id, () => null));
+    setItems(prev => updateItemById(prev, id, () => null));
   };
 
   const handleEdit = (id: string, text: string) => {
-    setItems(
-      findAndUpdateItem(items, id, (item) => ({
+    setItems(prev =>
+      updateItemById(prev, id, (item) => ({
         ...item,
         text,
       }))
@@ -119,54 +131,93 @@ export const ChecklistForm = ({
     }
   };
 
+  const countAllItems = (itemsList: ChecklistItem[]): number => {
+    let count = 0;
+    for (const item of itemsList) {
+      count++;
+      if (item.children) {
+        count += countAllItems(item.children);
+      }
+    }
+    return count;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="space-y-3">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <ListChecks className="h-5 w-5 text-primary" />
             {mode === "add" ? "Create New Checklist" : "Edit Checklist"}
           </DialogTitle>
+          <DialogDescription>
+            Create tasks and add sub-items to organize your checklist hierarchically.
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-          <div className="space-y-4 flex-1 overflow-y-auto pr-2">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Checklist title..."
-                required
-              />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden gap-4">
+          {/* Title Input */}
+          <div className="space-y-2">
+            <Label htmlFor="title" className="text-base font-medium">Checklist Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter a title for your checklist..."
+              className="h-11 text-base"
+              required
+            />
+          </div>
+
+          {/* Add Item Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Items</Label>
+              <span className="text-xs text-muted-foreground">
+                {countAllItems(items)} item{countAllItems(items) !== 1 ? 's' : ''} total
+              </span>
             </div>
+            <div className="flex gap-2">
+              <Input
+                value={newItemText}
+                onChange={(e) => setNewItemText(e.target.value)}
+                placeholder="Add a new item..."
+                className="h-11 text-base"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddItem();
+                  }
+                }}
+              />
+              <Button 
+                type="button" 
+                onClick={handleAddItem}
+                className="h-11 px-4"
+                disabled={!newItemText.trim()}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add
+              </Button>
+            </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label>Items</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={newItemText}
-                  onChange={(e) => setNewItemText(e.target.value)}
-                  placeholder="Add a new item..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddItem();
-                    }
-                  }}
-                />
-                <Button type="button" variant="outline" onClick={handleAddItem}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="border rounded-lg p-4 min-h-[200px] max-h-[300px] overflow-y-auto bg-card/50">
-                {items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No items yet. Add your first item above.
+          {/* Items List */}
+          <div className="flex-1 overflow-hidden">
+            <div className="border rounded-xl bg-card/50 backdrop-blur-sm min-h-[200px] max-h-[350px] overflow-y-auto">
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <ListChecks className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground font-medium">No items yet</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
+                    Add your first item using the input above
                   </p>
-                ) : (
-                  items.map((item) => (
+                </div>
+              ) : (
+                <div className="p-3 space-y-1">
+                  {items.map((item) => (
                     <ChecklistItemComponent
                       key={item.id}
                       item={item}
@@ -175,17 +226,18 @@ export const ChecklistForm = ({
                       onDelete={handleDelete}
                       onEdit={handleEdit}
                     />
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose} className="h-10 px-6">
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" className="h-10 px-6" disabled={!title.trim()}>
               {mode === "add" ? "Create Checklist" : "Save Changes"}
             </Button>
           </div>

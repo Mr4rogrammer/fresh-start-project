@@ -3,7 +3,7 @@ import { ChecklistItem } from "@/types/checklist";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronRight, Plus, Trash2, Edit, Check, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Edit, Check, X, CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChecklistItemComponentProps {
@@ -46,48 +46,70 @@ export const ChecklistItemComponent = ({
     }
   };
 
-  return (
-    <div className={cn("relative", level > 0 && "ml-6 border-l-2 border-border/50 pl-4")}>
-      <div className="flex items-center gap-2 py-1.5 group">
-        {hasChildren ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
-          </Button>
-        ) : (
-          <div className="w-6" />
-        )}
+  const getLevelColor = (lvl: number) => {
+    const colors = [
+      "border-primary/40",
+      "border-blue-500/40",
+      "border-green-500/40",
+      "border-yellow-500/40",
+      "border-purple-500/40",
+    ];
+    return colors[lvl % colors.length];
+  };
 
+  return (
+    <div 
+      className={cn(
+        "relative",
+        level > 0 && `ml-4 pl-4 border-l-2 ${getLevelColor(level)}`
+      )}
+    >
+      <div className={cn(
+        "flex items-center gap-3 py-2 px-3 rounded-lg group transition-all",
+        "hover:bg-muted/50",
+        item.completed && "opacity-60"
+      )}>
+        {/* Expand/Collapse Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-6 w-6 shrink-0 transition-all",
+            !hasChildren && "opacity-0 pointer-events-none"
+          )}
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+
+        {/* Checkbox */}
         <Checkbox
           checked={item.completed}
           onCheckedChange={() => onToggle(item.id)}
-          className="shrink-0"
+          className="shrink-0 h-5 w-5"
         />
 
+        {/* Text or Edit Input */}
         {isEditing ? (
           <div className="flex-1 flex items-center gap-2">
             <Input
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              className="h-8"
+              className="h-9 text-base"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSaveEdit();
                 if (e.key === "Escape") setIsEditing(false);
               }}
             />
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveEdit}>
+            <Button size="sm" variant="ghost" className="h-8 px-2" onClick={handleSaveEdit}>
               <Check className="h-4 w-4 text-green-500" />
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsEditing(false)}>
+            <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setIsEditing(false)}>
               <X className="h-4 w-4 text-destructive" />
             </Button>
           </div>
@@ -95,70 +117,90 @@ export const ChecklistItemComponent = ({
           <>
             <span
               className={cn(
-                "flex-1 text-sm transition-colors",
+                "flex-1 text-sm font-medium transition-colors",
                 item.completed && "line-through text-muted-foreground"
               )}
             >
               {item.text}
             </span>
 
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-7 w-7"
+                size="sm"
+                className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
                 onClick={() => setIsAddingChild(true)}
+                title="Add sub-item"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="text-xs">Sub</span>
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-7 w-7"
+                size="sm"
+                className="h-8 px-2"
                 onClick={() => {
                   setEditText(item.text);
                   setIsEditing(true);
                 }}
+                title="Edit"
               >
-                <Edit className="h-3.5 w-3.5" />
+                <Edit className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:text-destructive"
+                size="sm"
+                className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={() => onDelete(item.id)}
+                title="Delete"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           </>
         )}
       </div>
 
+      {/* Add Child Input */}
       {isAddingChild && (
-        <div className="ml-8 flex items-center gap-2 py-1">
+        <div className="ml-10 flex items-center gap-2 py-2 px-3 bg-muted/30 rounded-lg mt-1 animate-in slide-in-from-top-2 duration-200">
+          <CornerDownRight className="h-4 w-4 text-muted-foreground shrink-0" />
           <Input
-            placeholder="Add sub-item..."
+            placeholder="Enter sub-item text..."
             value={newChildText}
             onChange={(e) => setNewChildText(e.target.value)}
-            className="h-8"
+            className="h-9 flex-1"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAddChild();
-              if (e.key === "Escape") setIsAddingChild(false);
+              if (e.key === "Escape") {
+                setIsAddingChild(false);
+                setNewChildText("");
+              }
             }}
           />
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleAddChild}>
-            <Check className="h-4 w-4 text-green-500" />
+          <Button size="sm" onClick={handleAddChild} className="h-8">
+            <Check className="h-4 w-4 mr-1" />
+            Add
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setIsAddingChild(false)}>
-            <X className="h-4 w-4 text-destructive" />
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            className="h-8" 
+            onClick={() => {
+              setIsAddingChild(false);
+              setNewChildText("");
+            }}
+          >
+            <X className="h-4 w-4" />
           </Button>
         </div>
       )}
 
+      {/* Children */}
       {hasChildren && isExpanded && (
-        <div className="mt-1">
+        <div className="mt-1 space-y-0.5">
           {item.children.map((child) => (
             <ChecklistItemComponent
               key={child.id}
