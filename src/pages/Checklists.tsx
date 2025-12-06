@@ -12,6 +12,16 @@ import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 import { Checklist, ChecklistItem } from "@/types/checklist";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Checklist Item Row Component
 const ChecklistItemRow = ({
@@ -338,6 +348,10 @@ const Checklists = () => {
     }
   };
 
+  // Confirmation dialog states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
   const deleteChecklist = async () => {
     if (!user || !selectedChecklist) return;
 
@@ -356,6 +370,11 @@ const Checklists = () => {
     };
 
     requireVerification(performDelete);
+  };
+
+  const handleDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    deleteChecklist();
   };
 
   const handleTitleSave = () => {
@@ -476,16 +495,25 @@ const Checklists = () => {
   const handleResetChecks = () => {
     if (!selectedChecklist) return;
 
-    const resetItems = (items: ChecklistItem[]): ChecklistItem[] => {
-      return items.map((item) => ({
-        ...item,
-        completed: false,
-        children: item.children ? resetItems(item.children) : [],
-      }));
+    const performReset = () => {
+      const resetItems = (items: ChecklistItem[]): ChecklistItem[] => {
+        return items.map((item) => ({
+          ...item,
+          completed: false,
+          children: item.children ? resetItems(item.children) : [],
+        }));
+      };
+
+      updateChecklist({ ...selectedChecklist, items: resetItems(selectedChecklist.items) });
+      toast.success("All items unchecked");
     };
 
-    updateChecklist({ ...selectedChecklist, items: resetItems(selectedChecklist.items) });
-    toast.success("All items unchecked");
+    requireVerification(performReset);
+  };
+
+  const handleResetConfirm = () => {
+    setShowResetConfirm(false);
+    handleResetChecks();
   };
 
   // Helper to find parent and move item
@@ -626,11 +654,11 @@ const Checklists = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleResetChecks} className="gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => setShowResetConfirm(true)} className="gap-1.5">
                       <RotateCcw className="h-4 w-4" />
                       Reset
                     </Button>
-                    <Button variant="destructive" size="sm" onClick={deleteChecklist} className="gap-1.5">
+                    <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)} className="gap-1.5">
                       <Trash2 className="h-4 w-4" />
                       Delete
                     </Button>
@@ -717,6 +745,42 @@ const Checklists = () => {
         title="Verify to Continue"
         description="Enter your 6-digit code to confirm this action"
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Checklist</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedChecklist?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Confirmation Dialog */}
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Checklist</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to uncheck all items in "{selectedChecklist?.title}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetConfirm}>
+              Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
