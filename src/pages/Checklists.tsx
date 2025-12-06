@@ -71,14 +71,22 @@ const ChecklistItemRow = ({
       
       <div
         className={cn(
-          "flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors group",
+          "flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer",
           item.completed && "opacity-60"
         )}
         style={{ paddingLeft: `${level * 24 + 8}px` }}
+        onClick={(e) => {
+          // Don't toggle if clicking on buttons or inputs
+          if ((e.target as HTMLElement).closest('button, input')) return;
+          onToggle(item.id);
+        }}
       >
         {/* Expand/Collapse button */}
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsExpanded(!isExpanded);
+          }}
           className={cn(
             "w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors",
             !hasChildren && "invisible"
@@ -88,17 +96,16 @@ const ChecklistItemRow = ({
         </button>
 
         {/* Checkbox */}
-        <button
-          onClick={() => onToggle(item.id)}
+        <div
           className={cn(
-            "w-5 h-5 rounded border-2 flex items-center justify-center transition-all",
+            "w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0",
             item.completed
               ? "bg-emerald-500 border-emerald-500 text-white"
               : "border-muted-foreground/40 hover:border-emerald-500"
           )}
         >
           {item.completed && <Check className="h-3 w-3" />}
-        </button>
+        </div>
 
         {/* Item text or edit input */}
         {isEditing ? (
@@ -413,11 +420,31 @@ const Checklists = () => {
   const handleToggleItem = (itemId: string) => {
     if (!selectedChecklist) return;
 
-    const updatedItems = updateItemById(deepClone(selectedChecklist.items), itemId, (item) => ({
+    // First toggle the item
+    let updatedItems = updateItemById(deepClone(selectedChecklist.items), itemId, (item) => ({
       ...item,
       completed: !item.completed,
     }));
 
+    // Then update parent completion status based on children
+    const updateParentStatus = (items: ChecklistItem[]): ChecklistItem[] => {
+      return items.map((item) => {
+        if (item.children && item.children.length > 0) {
+          // First recursively update children
+          const updatedChildren = updateParentStatus(item.children);
+          // Check if any child is completed
+          const hasCompletedChild = updatedChildren.some(child => child.completed);
+          return {
+            ...item,
+            children: updatedChildren,
+            completed: hasCompletedChild || item.completed,
+          };
+        }
+        return item;
+      });
+    };
+
+    updatedItems = updateParentStatus(updatedItems);
     updateChecklist({ ...selectedChecklist, items: updatedItems });
   };
 
