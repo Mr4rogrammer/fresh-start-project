@@ -288,20 +288,9 @@ const Checklists = () => {
   }, [user]);
 
   const countItems = (items: ChecklistItem[]): { total: number; completed: number } => {
-    let total = 0;
-    let completed = 0;
-
-    const count = (itemsList: ChecklistItem[]) => {
-      itemsList.forEach((item) => {
-        total++;
-        if (item.completed) completed++;
-        if (item.children && item.children.length > 0) {
-          count(item.children);
-        }
-      });
-    };
-
-    count(items || []);
+    // Only count root-level items, not children
+    const total = items?.length || 0;
+    const completed = items?.filter(item => item.completed).length || 0;
     return { total, completed };
   };
 
