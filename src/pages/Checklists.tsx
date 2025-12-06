@@ -5,7 +5,7 @@ import { ref, push, remove, update, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2 } from "lucide-react";
+import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
@@ -20,6 +20,10 @@ const ChecklistItemRow = ({
   onAddChild,
   onDelete,
   onEdit,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
   level = 0,
 }: {
   item: ChecklistItem;
@@ -27,6 +31,10 @@ const ChecklistItemRow = ({
   onAddChild: (parentId: string, text: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, text: string) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   level?: number;
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -122,6 +130,24 @@ const ChecklistItemRow = ({
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => onMoveUp(item.id)}
+            disabled={!canMoveUp}
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30"
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onMoveDown(item.id)}
+            disabled={!canMoveDown}
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setIsAddingChild(true)}
             className="h-6 w-6 p-0 text-muted-foreground hover:text-emerald-500"
           >
@@ -172,7 +198,7 @@ const ChecklistItemRow = ({
       {/* Children */}
       {hasChildren && isExpanded && (
         <div>
-          {item.children.map((child) => (
+          {item.children.map((child, index) => (
             <ChecklistItemRow
               key={child.id}
               item={child}
@@ -180,6 +206,10 @@ const ChecklistItemRow = ({
               onAddChild={onAddChild}
               onDelete={onDelete}
               onEdit={onEdit}
+              onMoveUp={onMoveUp}
+              onMoveDown={onMoveDown}
+              canMoveUp={index > 0}
+              canMoveDown={index < item.children.length - 1}
               level={level + 1}
             />
           ))}
@@ -442,6 +472,39 @@ const Checklists = () => {
     toast.success("All items unchecked");
   };
 
+  // Helper to find parent and move item
+  const moveItemInArray = (items: ChecklistItem[], itemId: string, direction: 'up' | 'down'): ChecklistItem[] => {
+    const result = deepClone(items);
+    
+    // Check if item is at this level
+    const index = result.findIndex(item => item.id === itemId);
+    if (index !== -1) {
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex >= 0 && newIndex < result.length) {
+        [result[index], result[newIndex]] = [result[newIndex], result[index]];
+      }
+      return result;
+    }
+    
+    // Otherwise search in children
+    return result.map(item => ({
+      ...item,
+      children: item.children ? moveItemInArray(item.children, itemId, direction) : []
+    }));
+  };
+
+  const handleMoveUp = (itemId: string) => {
+    if (!selectedChecklist) return;
+    const updatedItems = moveItemInArray(selectedChecklist.items, itemId, 'up');
+    updateChecklist({ ...selectedChecklist, items: updatedItems });
+  };
+
+  const handleMoveDown = (itemId: string) => {
+    if (!selectedChecklist) return;
+    const updatedItems = moveItemInArray(selectedChecklist.items, itemId, 'down');
+    updateChecklist({ ...selectedChecklist, items: updatedItems });
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -602,7 +665,7 @@ const Checklists = () => {
                       <p>No items yet. Add your first item above.</p>
                     </div>
                   ) : (
-                    selectedChecklist.items.map((item) => (
+                    selectedChecklist.items.map((item, index) => (
                       <ChecklistItemRow
                         key={item.id}
                         item={item}
@@ -610,6 +673,10 @@ const Checklists = () => {
                         onAddChild={handleAddChildItem}
                         onDelete={handleDeleteItem}
                         onEdit={handleEditItem}
+                        onMoveUp={handleMoveUp}
+                        onMoveDown={handleMoveDown}
+                        canMoveUp={index > 0}
+                        canMoveDown={index < selectedChecklist.items.length - 1}
                       />
                     ))
                   )}
