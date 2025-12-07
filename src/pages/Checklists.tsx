@@ -5,7 +5,7 @@ import { ref, push, remove, update, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, GripVertical, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
@@ -351,6 +351,39 @@ const Checklists = () => {
   // Confirmation dialog states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateName, setDuplicateName] = useState("");
+
+  const duplicateChecklist = async () => {
+    if (!user || !selectedChecklist || !duplicateName.trim()) return;
+
+    try {
+      const checklistsRef = ref(db, `users/${user.uid}/checklists`);
+      const newChecklist = {
+        title: duplicateName.trim(),
+        items: JSON.parse(JSON.stringify(selectedChecklist.items)), // Deep copy with current state
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const newRef = await push(checklistsRef, newChecklist);
+      const createdChecklist = { id: newRef.key!, ...newChecklist };
+      setChecklists((prev) => [createdChecklist, ...prev]);
+      setSelectedChecklist(createdChecklist);
+      setShowDuplicateDialog(false);
+      setDuplicateName("");
+      toast.success("Checklist duplicated");
+    } catch (error) {
+      toast.error("Failed to duplicate checklist");
+    }
+  };
+
+  const handleOpenDuplicateDialog = () => {
+    if (selectedChecklist) {
+      setDuplicateName(`${selectedChecklist.title} (Copy)`);
+      setShowDuplicateDialog(true);
+    }
+  };
 
   const deleteChecklist = async () => {
     if (!user || !selectedChecklist) return;
@@ -654,6 +687,10 @@ const Checklists = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handleOpenDuplicateDialog} className="gap-1.5">
+                      <Copy className="h-4 w-4" />
+                      Duplicate
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => setShowResetConfirm(true)} className="gap-1.5">
                       <RotateCcw className="h-4 w-4" />
                       Reset
@@ -777,6 +814,36 @@ const Checklists = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleResetConfirm}>
               Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Duplicate Dialog */}
+      <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicate Checklist</AlertDialogTitle>
+            <AlertDialogDescription>
+              Create a copy of "{selectedChecklist?.title}" with its current state.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              value={duplicateName}
+              onChange={(e) => setDuplicateName(e.target.value)}
+              placeholder="Enter name for the copy..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && duplicateName.trim()) {
+                  duplicateChecklist();
+                }
+              }}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={duplicateChecklist} disabled={!duplicateName.trim()}>
+              Duplicate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
