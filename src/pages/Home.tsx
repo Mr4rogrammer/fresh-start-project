@@ -196,7 +196,14 @@ const Home = () => {
               </p>
             </div>
           ) : (
-            challenges.map((challenge, index) => {
+            [...challenges]
+              .sort((a, b) => {
+                // Show archived challenges last
+                if (a.status === "Achive" && b.status !== "Achive") return 1;
+                if (a.status !== "Achive" && b.status === "Achive") return -1;
+                return 0;
+              })
+              .map((challenge, index) => {
               const profitLoss =
                 (challenge.currentBalance || challenge.openingBalance) -
                 challenge.openingBalance -
