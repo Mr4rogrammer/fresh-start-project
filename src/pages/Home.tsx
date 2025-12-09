@@ -132,20 +132,47 @@ const Home = () => {
 
     const performDelete = async () => {
       console.log("Performing delete for challenge:", challengeId);
-      try {
-        const challengeRef = ref(
-          db,
-          `users/${user.uid}/challenges/${challengeId}`
-        );
-        await remove(challengeRef);
-        console.log("Challenge deleted successfully");
-        // Optimistic UI update
-        updateLocalChallenges(challenges.filter((c) => c.id !== challengeId));
-        toast.success("Challenge deleted successfully");
-      } catch (error) {
-        console.error("Failed to delete challenge:", error);
-        toast.error("Failed to delete challenge");
-      }
+      
+      // Find the challenge to delete (for undo)
+      const challengeToDelete = challenges.find((c) => c.id === challengeId);
+      if (!challengeToDelete) return;
+
+      // Optimistic UI update - remove immediately
+      updateLocalChallenges(challenges.filter((c) => c.id !== challengeId));
+
+      let isUndone = false;
+      
+      toast.success("Challenge deleted", {
+        duration: 10000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            isUndone = true;
+            // Restore the challenge in UI
+            updateLocalChallenges([...challenges.filter((c) => c.id !== challengeId), challengeToDelete]);
+            toast.success("Challenge restored");
+          },
+        },
+      });
+
+      // Actually delete from Firebase after 10 seconds if not undone
+      setTimeout(async () => {
+        if (!isUndone) {
+          try {
+            const challengeRef = ref(
+              db,
+              `users/${user.uid}/challenges/${challengeId}`
+            );
+            await remove(challengeRef);
+            console.log("Challenge deleted from database");
+          } catch (error) {
+            console.error("Failed to delete challenge:", error);
+            // Restore on error
+            updateLocalChallenges([...challenges.filter((c) => c.id !== challengeId), challengeToDelete]);
+            toast.error("Failed to delete challenge");
+          }
+        }
+      }, 10000);
     };
 
     console.log("Checking TOTP verification requirement");
