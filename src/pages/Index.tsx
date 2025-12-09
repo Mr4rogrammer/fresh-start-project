@@ -103,19 +103,43 @@ const Index = () => {
     if (!user || !selectedChallenge) return;
 
     const performDelete = async () => {
-      try {
-        const tradeRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/trades/${tradeId}`);
-        await remove(tradeRef);
-        
-        // Update local state
-        const updatedTrades = trades.filter(t => t.id !== tradeId);
-        updateLocalTrades(selectedChallenge.id, updatedTrades);
-        
-        toast.success("Trade deleted");
-      } catch (error) {
-        console.error("Error deleting trade:", error);
-        toast.error("Failed to delete trade");
-      }
+      // Find the trade to delete (for undo)
+      const tradeToDelete = trades.find(t => t.id === tradeId);
+      if (!tradeToDelete) return;
+
+      // Optimistic UI update - remove immediately
+      const updatedTrades = trades.filter(t => t.id !== tradeId);
+      updateLocalTrades(selectedChallenge.id, updatedTrades);
+
+      let isUndone = false;
+
+      toast.success("Trade deleted", {
+        duration: 10000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            isUndone = true;
+            // Restore the trade in UI
+            updateLocalTrades(selectedChallenge.id, [...updatedTrades, tradeToDelete]);
+            toast.success("Trade restored");
+          },
+        },
+      });
+
+      // Actually delete from Firebase after 10 seconds if not undone
+      setTimeout(async () => {
+        if (!isUndone) {
+          try {
+            const tradeRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/trades/${tradeId}`);
+            await remove(tradeRef);
+          } catch (error) {
+            console.error("Error deleting trade:", error);
+            // Restore on error
+            updateLocalTrades(selectedChallenge.id, [...updatedTrades, tradeToDelete]);
+            toast.error("Failed to delete trade");
+          }
+        }
+      }, 10000);
     };
 
     requireVerification(performDelete);

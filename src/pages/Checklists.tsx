@@ -389,17 +389,44 @@ const Checklists = () => {
     if (!user || !selectedChecklist) return;
 
     const performDelete = async () => {
-      try {
-        const checklistRef = ref(db, `users/${user.uid}/checklists/${selectedChecklist.id}`);
-        await remove(checklistRef);
+      // Store checklist for undo
+      const checklistToDelete = selectedChecklist;
+      
+      // Optimistic UI update - remove immediately
+      const remaining = checklists.filter((cl) => cl.id !== selectedChecklist.id);
+      setChecklists(remaining);
+      setSelectedChecklist(remaining.length > 0 ? remaining[0] : null);
 
-        const remaining = checklists.filter((cl) => cl.id !== selectedChecklist.id);
-        setChecklists(remaining);
-        setSelectedChecklist(remaining.length > 0 ? remaining[0] : null);
-        toast.success("Checklist deleted");
-      } catch (error) {
-        toast.error("Failed to delete checklist");
-      }
+      let isUndone = false;
+
+      toast.success("Checklist deleted", {
+        duration: 10000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            isUndone = true;
+            // Restore the checklist in UI
+            setChecklists([...remaining, checklistToDelete]);
+            setSelectedChecklist(checklistToDelete);
+            toast.success("Checklist restored");
+          },
+        },
+      });
+
+      // Actually delete from Firebase after 10 seconds if not undone
+      setTimeout(async () => {
+        if (!isUndone) {
+          try {
+            const checklistRef = ref(db, `users/${user.uid}/checklists/${checklistToDelete.id}`);
+            await remove(checklistRef);
+          } catch (error) {
+            // Restore on error
+            setChecklists([...remaining, checklistToDelete]);
+            setSelectedChecklist(checklistToDelete);
+            toast.error("Failed to delete checklist");
+          }
+        }
+      }, 10000);
     };
 
     requireVerification(performDelete);
