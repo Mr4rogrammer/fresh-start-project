@@ -17,7 +17,13 @@ import {
   DollarSign,
   Archive,
   CheckCircle,
+  ChevronDown,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -44,6 +50,7 @@ const Home = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newChallengeName, setNewChallengeName] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
+  const [isBreachedOpen, setIsBreachedOpen] = useState(false);
 
   const {
     isVerificationRequired,
@@ -361,161 +368,177 @@ const Home = () => {
 
         {/* Breached Accounts Section */}
         {challenges.filter(c => c.status === "Achive").length > 0 && (
-          <div className="mt-12">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-px flex-1 bg-border/50" />
-              <h2 className="text-xl font-semibold text-muted-foreground flex items-center gap-2">
-                <Archive className="h-5 w-5" />
-                Breached Accounts
-              </h2>
-              <div className="h-px flex-1 bg-border/50" />
-            </div>
+          <Collapsible
+            open={isBreachedOpen}
+            onOpenChange={setIsBreachedOpen}
+            className="mt-12"
+          >
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center gap-3 mb-6 group cursor-pointer">
+                <div className="h-px flex-1 bg-border/50 group-hover:bg-border transition-colors" />
+                <h2 className="text-xl font-semibold text-muted-foreground flex items-center gap-2 group-hover:text-foreground transition-colors">
+                  <Archive className="h-5 w-5" />
+                  Breached Accounts
+                  <span className="text-sm font-normal">
+                    ({challenges.filter(c => c.status === "Achive").length})
+                  </span>
+                  <ChevronDown 
+                    className={`h-5 w-5 transition-transform duration-200 ${
+                      isBreachedOpen ? "rotate-180" : ""
+                    }`} 
+                  />
+                </h2>
+                <div className="h-px flex-1 bg-border/50 group-hover:bg-border transition-colors" />
+              </button>
+            </CollapsibleTrigger>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {challenges
-                .filter(c => c.status === "Achive")
-                .map((challenge, index) => {
-                  const profitLoss =
-                    (challenge.currentBalance || challenge.openingBalance) -
-                    challenge.openingBalance -
-                    challenge.totalFees;
-                  const profitLossPercent = (
-                    (profitLoss / challenge.openingBalance) *
-                    100
-                  ).toFixed(2);
-                  const isProfit = profitLoss >= 0;
+            <CollapsibleContent className="animate-accordion-down data-[state=closed]:animate-accordion-up">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {challenges
+                  .filter(c => c.status === "Achive")
+                  .map((challenge, index) => {
+                    const profitLoss =
+                      (challenge.currentBalance || challenge.openingBalance) -
+                      challenge.openingBalance -
+                      challenge.totalFees;
+                    const profitLossPercent = (
+                      (profitLoss / challenge.openingBalance) *
+                      100
+                    ).toFixed(2);
+                    const isProfit = profitLoss >= 0;
 
-                  return (
-                    <Card
-                      key={challenge.id}
-                      onClick={() => handleSelectChallenge(challenge)}
-                      className="animate-scale-in hover-lift cursor-pointer group glass-premium border overflow-hidden relative opacity-60 hover:opacity-80 transition-opacity"
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      {/* Gradient accent bar - muted for archived */}
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-muted-foreground/30" />
+                    return (
+                      <Card
+                        key={challenge.id}
+                        onClick={() => handleSelectChallenge(challenge)}
+                        className="animate-scale-in hover-lift cursor-pointer group glass-premium border overflow-hidden relative opacity-60 hover:opacity-80 transition-opacity"
+                        style={{ animationDelay: `${index * 0.1}s` }}
+                      >
+                        {/* Gradient accent bar - muted for archived */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-muted-foreground/30" />
 
-                      <CardHeader className="pb-4">
-                        <CardTitle className="flex items-start justify-between gap-2">
-                          <span className="text-muted-foreground text-xl leading-tight font-semibold">
-                            {challenge.name}
-                          </span>
-                          <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">
-                            Archived
-                          </span>
-                        </CardTitle>
-                      </CardHeader>
-
-                      <CardContent className="space-y-4">
-                        {/* Balance cards */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-muted/40 rounded-lg p-3 space-y-1.5 border border-border/20">
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                              <DollarSign className="h-3.5 w-3.5" />
-                              Opening
-                            </div>
-                            <div className="text-lg font-bold text-muted-foreground">
-                              $
-                              {challenge.openingBalance.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </div>
-                          </div>
-
-                          <div className="bg-muted/40 rounded-lg p-3 space-y-1.5 border border-border/20">
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                              <TrendingUp className="h-3.5 w-3.5" />
-                              Final
-                            </div>
-                            <div
-                              className={`text-lg font-bold ${
-                                isProfit ? "text-profit/70" : "text-loss/70"
-                              }`}
-                            >
-                              $
-                              {(
-                                (challenge.currentBalance ||
-                                  challenge.openingBalance) - challenge.totalFees
-                              ).toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Performance badge */}
-                        <div
-                          className={`rounded-lg p-3 ${
-                            isProfit
-                              ? "bg-profit/5 border border-profit/20"
-                              : "bg-loss/5 border border-loss/20"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                              Final Result
+                        <CardHeader className="pb-4">
+                          <CardTitle className="flex items-start justify-between gap-2">
+                            <span className="text-muted-foreground text-xl leading-tight font-semibold">
+                              {challenge.name}
                             </span>
-                            <div className="text-right">
+                            <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">
+                              Archived
+                            </span>
+                          </CardTitle>
+                        </CardHeader>
+
+                        <CardContent className="space-y-4">
+                          {/* Balance cards */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-muted/40 rounded-lg p-3 space-y-1.5 border border-border/20">
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                                <DollarSign className="h-3.5 w-3.5" />
+                                Opening
+                              </div>
+                              <div className="text-lg font-bold text-muted-foreground">
+                                $
+                                {challenge.openingBalance.toLocaleString("en-US", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="bg-muted/40 rounded-lg p-3 space-y-1.5 border border-border/20">
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                                <TrendingUp className="h-3.5 w-3.5" />
+                                Final
+                              </div>
                               <div
-                                className={`text-base font-bold ${
+                                className={`text-lg font-bold ${
                                   isProfit ? "text-profit/70" : "text-loss/70"
                                 }`}
                               >
-                                {isProfit ? "+" : ""}
-                                {profitLossPercent}%
-                              </div>
-                              <div
-                                className={`text-xs font-medium ${
-                                  isProfit ? "text-profit/50" : "text-loss/50"
-                                }`}
-                              >
-                                {isProfit ? "+" : ""}$
-                                {Math.abs(profitLoss).toLocaleString("en-US", {
+                                $
+                                {(
+                                  (challenge.currentBalance ||
+                                    challenge.openingBalance) - challenge.totalFees
+                                ).toLocaleString("en-US", {
                                   minimumFractionDigits: 2,
                                   maximumFractionDigits: 2,
                                 })}
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Footer */}
-                        <div className="pt-3 border-t border-border/30 flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            Created{" "}
-                            {new Date(challenge.createdAt).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              }
-                            )}
-                          </span>
-
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteChallenge(challenge.id);
-                            }}
-                            className="gap-2 text-muted-foreground hover:text-destructive"
-                            title="Delete challenge"
-                            aria-label={`Delete ${challenge.name}`}
+                          {/* Performance badge */}
+                          <div
+                            className={`rounded-lg p-3 ${
+                              isProfit
+                                ? "bg-profit/5 border border-profit/20"
+                                : "bg-loss/5 border border-loss/20"
+                            }`}
                           >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-            </div>
-          </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                Final Result
+                              </span>
+                              <div className="text-right">
+                                <div
+                                  className={`text-base font-bold ${
+                                    isProfit ? "text-profit/70" : "text-loss/70"
+                                  }`}
+                                >
+                                  {isProfit ? "+" : ""}
+                                  {profitLossPercent}%
+                                </div>
+                                <div
+                                  className={`text-xs font-medium ${
+                                    isProfit ? "text-profit/50" : "text-loss/50"
+                                  }`}
+                                >
+                                  {isProfit ? "+" : ""}$
+                                  {Math.abs(profitLoss).toLocaleString("en-US", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Footer */}
+                          <div className="pt-3 border-t border-border/30 flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">
+                              Created{" "}
+                              {new Date(challenge.createdAt).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                }
+                              )}
+                            </span>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteChallenge(challenge.id);
+                              }}
+                              className="gap-2 text-muted-foreground hover:text-destructive"
+                              title="Delete challenge"
+                              aria-label={`Delete ${challenge.name}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
       </div>
 
