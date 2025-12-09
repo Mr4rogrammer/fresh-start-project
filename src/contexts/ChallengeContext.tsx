@@ -7,6 +7,7 @@ interface Challenge {
   createdAt: string;
   openingBalance: number;
   currentBalance?: number;
+  status?: string;
 }
 
 interface ChallengeContextType {
