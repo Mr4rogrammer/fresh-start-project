@@ -13,9 +13,10 @@ interface TradeModalProps {
   onDelete: (tradeId: string) => void;
   onEdit: (trade: Trade) => void;
   openAddTrade: () => void;
+  readOnly?: boolean;
 }
 
-export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, openAddTrade }: TradeModalProps) => {
+export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, openAddTrade, readOnly = false }: TradeModalProps) => {
   const totalProfit = trades.reduce((sum, trade) => sum + trade.profit, 0);
   const isProfit = totalProfit > 0;
 
@@ -57,15 +58,17 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
             <div className={`text-xl font-bold ${isProfit ? 'text-profit' : 'text-loss'}`}>
               Total: ${isProfit ? '+' : ''}{totalProfit.toFixed(2)}
             </div>
-            <Button
-              onClick={() => {
-                openAddTrade();
-              }}
-              className="gap-2 transition-all hover:scale-105"
-            >
-              <Plus className="h-5 w-5" />
-              Add Trade
-            </Button>
+            {!readOnly && (
+              <Button
+                onClick={() => {
+                  openAddTrade();
+                }}
+                className="gap-2 transition-all hover:scale-105"
+              >
+                <Plus className="h-5 w-5" />
+                Add Trade
+              </Button>
+            )}
           </div>
 
         </DialogHeader>
@@ -87,24 +90,26 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
                     </span>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(trade)}
-                      className="h-8 w-8"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => trade.id && onDelete(trade.id)}
-                      className="h-8 w-8 text-loss hover:text-loss"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {!readOnly && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(trade)}
+                        className="h-8 w-8"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => trade.id && onDelete(trade.id)}
+                        className="h-8 w-8 text-loss hover:text-loss"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">

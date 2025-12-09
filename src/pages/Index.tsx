@@ -149,6 +149,8 @@ const Index = () => {
     };
   };
 
+  const isArchived = selectedChallenge?.status === "Achive";
+
   const handleDayClick = (day: number) => {
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayData = getDayData(day);
@@ -156,8 +158,8 @@ const Index = () => {
     if (dayData && dayData.trades.length > 0) {
       setSelectedDate(dayData.date);
       setIsTradeModalOpen(true);
-    } else {
-      // Open add modal with the selected date
+    } else if (!isArchived) {
+      // Open add modal with the selected date (only if not archived)
       setSelectedDate(dateStr);
       setEditingTrade(null);
       setIsAddModalOpen(true);
@@ -277,6 +279,7 @@ const Index = () => {
             setIsTradeModalOpen(false)
             setIsAddModalOpen(true);
           }}
+          readOnly={isArchived}
         />
 
         <AddTradeModal
