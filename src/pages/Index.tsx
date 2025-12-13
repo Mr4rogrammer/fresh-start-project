@@ -13,6 +13,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import UndoToast from "@/components/UndoToast";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 
@@ -113,18 +114,18 @@ const Index = () => {
 
       let isUndone = false;
 
-      toast.success("Trade deleted", {
-        duration: 10000,
-        action: {
-          label: "Undo",
-          onClick: () => {
+      const toastId = toast(
+        <UndoToast
+          message="Trade deleted"
+          onUndo={() => {
             isUndone = true;
-            // Restore the trade in UI
+            toast.dismiss(toastId);
             updateLocalTrades(selectedChallenge.id, [...updatedTrades, tradeToDelete]);
             toast.success("Trade restored");
-          },
-        },
-      });
+          }}
+        />,
+        { duration: 10000 }
+      );
 
       // Actually delete from Firebase after 10 seconds if not undone
       setTimeout(async () => {

@@ -7,6 +7,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, GripVertical, ArrowUp, ArrowDown, Copy } from "lucide-react";
 import { toast } from "sonner";
+import UndoToast from "@/components/UndoToast";
 import { Input } from "@/components/ui/input";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
@@ -399,19 +400,19 @@ const Checklists = () => {
 
       let isUndone = false;
 
-      toast.success("Checklist deleted", {
-        duration: 10000,
-        action: {
-          label: "Undo",
-          onClick: () => {
+      const toastId = toast(
+        <UndoToast
+          message="Checklist deleted"
+          onUndo={() => {
             isUndone = true;
-            // Restore the checklist in UI
+            toast.dismiss(toastId);
             setChecklists([...remaining, checklistToDelete]);
             setSelectedChecklist(checklistToDelete);
             toast.success("Checklist restored");
-          },
-        },
-      });
+          }}
+        />,
+        { duration: 10000 }
+      );
 
       // Actually delete from Firebase after 10 seconds if not undone
       setTimeout(async () => {
