@@ -25,6 +25,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import UndoToast from "@/components/UndoToast";
 import {
   Dialog,
   DialogContent,
@@ -142,18 +143,18 @@ const Home = () => {
 
       let isUndone = false;
       
-      toast.success("Challenge deleted", {
-        duration: 10000,
-        action: {
-          label: "Undo",
-          onClick: () => {
+      const toastId = toast(
+        <UndoToast
+          message="Challenge deleted"
+          onUndo={() => {
             isUndone = true;
-            // Restore the challenge in UI
+            toast.dismiss(toastId);
             updateLocalChallenges([...challenges.filter((c) => c.id !== challengeId), challengeToDelete]);
             toast.success("Challenge restored");
-          },
-        },
-      });
+          }}
+        />,
+        { duration: 10000 }
+      );
 
       // Actually delete from Firebase after 10 seconds if not undone
       setTimeout(async () => {
