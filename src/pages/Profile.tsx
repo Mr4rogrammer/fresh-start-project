@@ -24,11 +24,11 @@ const Profile = () => {
   const [totpUri, setTotpUri] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState("");
   const [isEnrolling, setIsEnrolling] = useState(false);
-  
+
   // Theme colors
   const [primaryColor, setPrimaryColor] = useState("#6366f1");
   const [secondaryColor, setSecondaryColor] = useState("#06b6d4");
-  
+
   const {
     isVerificationRequired,
     requireVerification,
@@ -52,44 +52,44 @@ const Profile = () => {
   const loadThemeColors = () => {
     const savedPrimary = localStorage.getItem('theme-primary');
     const savedSecondary = localStorage.getItem('theme-secondary');
-    
+
     if (savedPrimary) setPrimaryColor(savedPrimary);
     if (savedSecondary) setSecondaryColor(savedSecondary);
   };
 
   const hexToHSL = (hex: string) => {
     hex = hex.replace('#', '');
-    
+
     const r = parseInt(hex.substring(0, 2), 16) / 255;
     const g = parseInt(hex.substring(2, 4), 16) / 255;
     const b = parseInt(hex.substring(4, 6), 16) / 255;
-    
+
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     let h = 0, s = 0, l = (max + min) / 2;
-    
+
     if (max !== min) {
       const d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      
+
       switch (max) {
         case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
         case g: h = ((b - r) / d + 2) / 6; break;
         case b: h = ((r - g) / d + 4) / 6; break;
       }
     }
-    
+
     h = Math.round(h * 360);
     s = Math.round(s * 100);
     l = Math.round(l * 100);
-    
+
     return `${h} ${s}% ${l}%`;
   };
 
   const applyThemeColor = (variable: string, color: string) => {
     const hsl = hexToHSL(color);
     document.documentElement.style.setProperty(`--${variable}`, hsl);
-    
+
     if (variable === 'primary') {
       const [h, s, l] = hsl.split(' ');
       const glowL = parseInt(l) + 5;
@@ -114,18 +114,18 @@ const Profile = () => {
   const resetThemeColors = () => {
     const defaultPrimary = '#6366f1';
     const defaultSecondary = '#06b6d4';
-    
+
     setPrimaryColor(defaultPrimary);
     setSecondaryColor(defaultSecondary);
-    
+
     applyThemeColor('primary', defaultPrimary);
     applyThemeColor('accent', defaultSecondary);
-    
+
     localStorage.removeItem('theme-primary');
     localStorage.removeItem('theme-secondary');
-    
+
     toast.success('Theme colors reset to default!');
-    
+
     // Reload page to apply default colors
     window.location.reload();
   };
@@ -316,9 +316,9 @@ const Profile = () => {
                       </div>
                       <div className="flex justify-center bg-white p-3 rounded-lg shadow-inner">
                         {qrCodeUrl ? (
-                          <img 
-                            src={qrCodeUrl} 
-                            alt="TOTP QR Code" 
+                          <img
+                            src={qrCodeUrl}
+                            alt="TOTP QR Code"
                             className="w-40 h-40"
                             onError={(e) => {
                               console.error("QR code failed to load");
@@ -404,89 +404,7 @@ const Profile = () => {
           </Card>
 
           {/* Theme Customization Card */}
-          <Card className="glass hover-lift animate-fade-in border-2" style={{ animationDelay: "0.1s" }}>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-primary" />
-                <CardTitle className="text-2xl gradient-text">Theme Colors</CardTitle>
-              </div>
-              <CardDescription>Customize your app colors</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <Label htmlFor="primary-color" className="text-base font-semibold flex items-center gap-2">
-                    Primary Color
-                    <div 
-                      className="w-6 h-6 rounded-full border-2 border-border shadow-md"
-                      style={{ backgroundColor: primaryColor }}
-                    />
-                  </Label>
-                  <div className="flex gap-3">
-                    <Input
-                      id="primary-color"
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                      className="h-14 w-20 cursor-pointer border-2"
-                    />
-                    <Input
-                      type="text"
-                      value={primaryColor}
-                      onChange={(e) => handlePrimaryColorChange(e.target.value)}
-                      className="h-14 font-mono border-2"
-                      placeholder="#6366f1"
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-3">
-                  <Label htmlFor="secondary-color" className="text-base font-semibold flex items-center gap-2">
-                    Accent Color
-                    <div 
-                      className="w-6 h-6 rounded-full border-2 border-border shadow-md"
-                      style={{ backgroundColor: secondaryColor }}
-                    />
-                  </Label>
-                  <div className="flex gap-3">
-                    <Input
-                      id="secondary-color"
-                      type="color"
-                      value={secondaryColor}
-                      onChange={(e) => handleSecondaryColorChange(e.target.value)}
-                      className="h-14 w-20 cursor-pointer border-2"
-                    />
-                    <Input
-                      type="text"
-                      value={secondaryColor}
-                      onChange={(e) => handleSecondaryColorChange(e.target.value)}
-                      className="h-14 font-mono border-2"
-                      placeholder="#06b6d4"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Button 
-                onClick={resetThemeColors}
-                variant="outline"
-                className="w-full gap-2 border-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Reset to Default
-              </Button>
-
-              {/* Color Preview */}
-              <div className="bg-gradient-subtle rounded-xl p-4 border-2 border-border/50">
-                <p className="text-sm font-semibold mb-3">Preview:</p>
-                <div className="flex gap-3">
-                  <Button size="sm" variant="default">Primary</Button>
-                  <Button size="sm" variant="gradient">Gradient</Button>
-                  <Button size="sm" variant="outline">Outline</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <TotpVerificationModal

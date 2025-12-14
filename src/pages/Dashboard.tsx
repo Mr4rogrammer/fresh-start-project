@@ -356,7 +356,7 @@ const Dashboard = () => {
         <div className="flex flex-col gap-4 mb-8 animate-slide-down">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Dashboard</h1>
+              <h1 className="text-4xl font-bold mb-2 ">Dashboard</h1>
               <p className="text-muted-foreground text-lg">
                 Analyze your trading performance
               </p>

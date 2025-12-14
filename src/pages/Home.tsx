@@ -123,7 +123,7 @@ const Home = () => {
       updateLocalChallenges(challenges.filter((c) => c.id !== challengeId));
 
       let isUndone = false;
-      
+
       const toastId = toast(
         <UndoToast
           message="Challenge deleted"
@@ -177,7 +177,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-mesh">
       <Navbar />
-      
+
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 animate-fade-in">
