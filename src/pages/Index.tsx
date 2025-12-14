@@ -11,11 +11,12 @@ import { TradeModal } from "@/components/TradeModal";
 import { AddTradeModal } from "@/components/AddTradeModal";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
+import { cn } from "@/lib/utils";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -38,6 +39,8 @@ const Index = () => {
   const monthNames = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   useEffect(() => {
     if (!loading && !user) {
       navigate("/");
@@ -50,7 +53,6 @@ const Index = () => {
     }
   }, [selectedChallenge, navigate]);
 
-  // Get trades from context instead of fetching
   const trades = selectedChallenge ? getTrades(selectedChallenge.id) : [];
 
   const addTrade = async (trade: Omit<Trade, 'id' | 'createdAt'>) => {
@@ -58,41 +60,27 @@ const Index = () => {
 
     const performSave = async () => {
       try {
-        const newTrade = {
-          ...trade,
-          createdAt: new Date().toISOString(),
-        };
+        const newTrade = { ...trade, createdAt: new Date().toISOString() };
 
         if (editingTrade?.id) {
           const tradeRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/trades/${editingTrade.id}`);
           await update(tradeRef, newTrade);
-          
-          // Update local state
-          const updatedTrades = trades.map(t => 
-            t.id === editingTrade.id ? { ...newTrade, id: editingTrade.id } as Trade : t
-          );
+          const updatedTrades = trades.map(t => t.id === editingTrade.id ? { ...newTrade, id: editingTrade.id } as Trade : t);
           updateLocalTrades(selectedChallenge.id, updatedTrades);
-          
-          toast.success("Trade updated successfully");
+          toast.success("Trade updated");
         } else {
           const tradesRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/trades`);
           const newRef = await push(tradesRef, newTrade);
-          
-          // Update local state
           const updatedTrades = [{ ...newTrade, id: newRef.key!, createdAt: newTrade.createdAt } as Trade, ...trades];
           updateLocalTrades(selectedChallenge.id, updatedTrades);
-          
-          toast.success("Trade added successfully");
+          toast.success("Trade added");
         }
-
         setEditingTrade(null);
       } catch (error) {
-        console.error("Error saving trade:", error);
         toast.error("Failed to save trade");
       }
     };
 
-    // Only require verification for edits, not new trades
     if (editingTrade?.id) {
       requireVerification(performSave);
     } else {
@@ -104,11 +92,9 @@ const Index = () => {
     if (!user || !selectedChallenge) return;
 
     const performDelete = async () => {
-      // Find the trade to delete (for undo)
       const tradeToDelete = trades.find(t => t.id === tradeId);
       if (!tradeToDelete) return;
 
-      // Optimistic UI update - remove immediately
       const updatedTrades = trades.filter(t => t.id !== tradeId);
       updateLocalTrades(selectedChallenge.id, updatedTrades);
 
@@ -127,15 +113,12 @@ const Index = () => {
         { duration: 10000 }
       );
 
-      // Actually delete from Firebase after 10 seconds if not undone
       setTimeout(async () => {
         if (!isUndone) {
           try {
             const tradeRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/trades/${tradeId}`);
             await remove(tradeRef);
           } catch (error) {
-            console.error("Error deleting trade:", error);
-            // Restore on error
             updateLocalTrades(selectedChallenge.id, [...updatedTrades, tradeToDelete]);
             toast.error("Failed to delete trade");
           }
@@ -152,20 +135,13 @@ const Index = () => {
     setIsAddModalOpen(true);
   };
 
-  const getDaysInMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
+  const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
 
   const getDayData = (day: number): DayData | null => {
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayTrades = trades.filter(t => t.date === dateStr);
-
     if (dayTrades.length === 0) return null;
-
     return {
       date: dateStr,
       trades: dayTrades,
@@ -184,7 +160,6 @@ const Index = () => {
       setSelectedDate(dayData.date);
       setIsTradeModalOpen(true);
     } else if (!isArchived) {
-      // Open add modal with the selected date (only if not archived)
       setSelectedDate(dateStr);
       setEditingTrade(null);
       setIsAddModalOpen(true);
@@ -195,27 +170,20 @@ const Index = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + delta, 1));
   };
 
+  const goToToday = () => setCurrentDate(new Date());
+
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
     const days = [];
 
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
-      days.push(<CalendarDay key={`empty-${i}`} dayData={null} dayNumber={null} onClick={() => { }} />);
+      days.push(<CalendarDay key={`empty-${i}`} dayData={null} dayNumber={null} onClick={() => {}} />);
     }
 
-    // Add cells for each day of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dayData = getDayData(day);
-      days.push(
-        <CalendarDay
-          key={day}
-          dayData={dayData}
-          dayNumber={day}
-          onClick={() => handleDayClick(day)}
-        />
-      );
+      days.push(<CalendarDay key={day} dayData={dayData} dayNumber={day} onClick={() => handleDayClick(day)} />);
     }
 
     return days;
@@ -223,69 +191,82 @@ const Index = () => {
 
   const selectedDayTrades = selectedDate ? trades.filter(t => t.date === selectedDate) : [];
 
+  // Calculate monthly stats
+  const monthlyTrades = trades.filter(t => {
+    const tradeDate = new Date(t.date);
+    return tradeDate.getMonth() === currentDate.getMonth() && tradeDate.getFullYear() === currentDate.getFullYear();
+  });
+  const monthlyProfit = monthlyTrades.reduce((sum, t) => sum + t.profit, 0);
+  const isMonthlyProfit = monthlyProfit >= 0;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-gradient-mesh flex items-center justify-center">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+        </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
-    <div className="h-screen bg-gradient-to-br from-background via-background to-primary/5 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-mesh flex flex-col overflow-hidden">
       <Navbar />
 
       <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full p-4 md:p-6 overflow-hidden">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4 animate-fade-in">
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Calendar
-          </h1>
-
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-fade-in">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-card/50 backdrop-blur-sm rounded-lg p-1 border border-border/50 shadow-sm">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => changeMonth(-1)}
-                className="h-10 w-10 transition-all hover:scale-110 hover:bg-primary/10"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-primary rounded-xl blur-lg opacity-30" />
+              <div className="relative bg-gradient-primary p-3 rounded-xl">
+                <Calendar className="h-6 w-6 text-primary-foreground" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold gradient-text">Calendar</h1>
+              <p className="text-sm text-muted-foreground">
+                {monthlyTrades.length} trades this month • 
+                <span className={cn("font-semibold ml-1", isMonthlyProfit ? "text-profit" : "text-loss")}>
+                  {isMonthlyProfit ? "+" : ""}${Math.abs(monthlyProfit).toFixed(2)}
+                </span>
+              </p>
+            </div>
+          </div>
 
-              <span className="text-xl font-semibold text-foreground min-w-[180px] text-center">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={goToToday} className="text-muted-foreground">
+              Today
+            </Button>
+            <div className="flex items-center gap-1 bg-card/60 backdrop-blur-sm rounded-xl p-1 border border-border/50">
+              <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(-1)}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-base font-semibold px-3 min-w-[160px] text-center">
                 {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
               </span>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => changeMonth(1)}
-                className="h-10 w-10 transition-all hover:scale-110 hover:bg-primary/10"
-              >
-                <ChevronRight className="h-5 w-5" />
+              <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(1)}>
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Calendar Grid - Flex layout to fill remaining space */}
-        <div className="flex-1 flex flex-col min-h-0 animate-scale-in mt-10  overflow-y-auto">
+        {/* Calendar Grid */}
+        <div className="flex-1 flex flex-col min-h-0 animate-scale-in">
           {/* Day headers */}
-          <div className="grid grid-cols-7 gap-2 md:gap-3 mb-2">
-            {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thuesday', 'Friday', 'Saturday'].map(day => (
-              <div key={day} className="text-center text-muted-foreground font-bold  text-base">
+          <div className="grid grid-cols-7 gap-2 mb-3">
+            {dayNames.map(day => (
+              <div key={day} className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider py-2">
                 {day}
               </div>
             ))}
           </div>
 
-          {/* Calendar days - Fills remaining space */}
-          <div className="grid grid-cols-7 gap-2 md:gap-3 flex-1 auto-rows-fr mt-5">
+          {/* Calendar days */}
+          <div className="grid grid-cols-7 gap-2 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
             {renderCalendar()}
           </div>
         </div>
@@ -301,7 +282,7 @@ const Index = () => {
           openAddTrade={() => {
             setEditingTrade(null);
             setSelectedDate(null);
-            setIsTradeModalOpen(false)
+            setIsTradeModalOpen(false);
             setIsAddModalOpen(true);
           }}
           readOnly={isArchived}
@@ -309,11 +290,7 @@ const Index = () => {
 
         <AddTradeModal
           open={isAddModalOpen}
-          onClose={() => {
-            setIsAddModalOpen(false);
-            setEditingTrade(null);
-            setSelectedDate(null);
-          }}
+          onClose={() => { setIsAddModalOpen(false); setEditingTrade(null); setSelectedDate(null); }}
           onSave={addTrade}
           editingTrade={editingTrade}
           initialDate={selectedDate || undefined}
@@ -323,8 +300,8 @@ const Index = () => {
           open={isVerificationRequired}
           onClose={cancelVerification}
           onVerify={handleVerificationSuccess}
-          title="Verify to Delete Trade"
-          description="Enter your 6-digit code to confirm deletion"
+          title="Verify Action"
+          description="Enter your 6-digit code to confirm"
         />
       </div>
     </div>
