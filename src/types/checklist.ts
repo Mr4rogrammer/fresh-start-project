@@ -12,4 +12,5 @@ export interface Checklist {
   items: ChecklistItem[];
   createdAt: string;
   updatedAt: string;
+  isDuplicate?: boolean;
 }

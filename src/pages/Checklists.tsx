@@ -365,10 +365,11 @@ const Checklists = () => {
         items: JSON.parse(JSON.stringify(selectedChecklist.items)), // Deep copy with current state
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        isDuplicate: true,
       };
 
       const newRef = await push(checklistsRef, newChecklist);
-      const createdChecklist = { id: newRef.key!, ...newChecklist };
+      const createdChecklist: Checklist = { id: newRef.key!, ...newChecklist };
       setChecklists((prev) => [createdChecklist, ...prev]);
       setSelectedChecklist(createdChecklist);
       setShowDuplicateDialog(false);
@@ -645,34 +646,82 @@ const Checklists = () => {
                 No checklists yet
               </div>
             ) : (
-              checklists.map((checklist) => {
-                const stats = countItems(checklist.items);
-                const isSelected = selectedChecklist?.id === checklist.id;
+              <>
+                {/* Original Checklists */}
+                {checklists.filter(c => !c.isDuplicate).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider">
+                      Checklists
+                    </div>
+                    {checklists.filter(c => !c.isDuplicate).map((checklist) => {
+                      const stats = countItems(checklist.items);
+                      const isSelected = selectedChecklist?.id === checklist.id;
 
-                return (
-                  <button
-                    key={checklist.id}
-                    onClick={() => setSelectedChecklist(checklist)}
-                    className={cn(
-                      "w-full text-left p-3 rounded-lg transition-all",
-                      isSelected
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ListChecks className="h-4 w-4 shrink-0" />
-                      <span className="font-medium truncate">{checklist.title}</span>
+                      return (
+                        <button
+                          key={checklist.id}
+                          onClick={() => setSelectedChecklist(checklist)}
+                          className={cn(
+                            "w-full text-left p-3 rounded-lg transition-all",
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <ListChecks className="h-4 w-4 shrink-0" />
+                            <span className="font-medium truncate">{checklist.title}</span>
+                          </div>
+                          <div className={cn(
+                            "text-xs mt-1",
+                            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+                          )}>
+                            {stats.completed}/{stats.total} items
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Duplicated Checklists */}
+                {checklists.filter(c => c.isDuplicate).length > 0 && (
+                  <div className="space-y-1 mt-4">
+                    <div className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider flex items-center gap-2">
+                      <Copy className="h-3 w-3" />
+                      Duplicated
                     </div>
-                    <div className={cn(
-                      "text-xs mt-1",
-                      isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}>
-                      {stats.completed}/{stats.total} items
-                    </div>
-                  </button>
-                );
-              })
+                    {checklists.filter(c => c.isDuplicate).map((checklist) => {
+                      const stats = countItems(checklist.items);
+                      const isSelected = selectedChecklist?.id === checklist.id;
+
+                      return (
+                        <button
+                          key={checklist.id}
+                          onClick={() => setSelectedChecklist(checklist)}
+                          className={cn(
+                            "w-full text-left p-3 rounded-lg transition-all",
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-muted/70"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <ListChecks className="h-4 w-4 shrink-0" />
+                            <span className="font-medium truncate">{checklist.title}</span>
+                          </div>
+                          <div className={cn(
+                            "text-xs mt-1",
+                            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+                          )}>
+                            {stats.completed}/{stats.total} items
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
