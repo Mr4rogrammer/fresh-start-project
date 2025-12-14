@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { LucideIcon } from "lucide-react";
 
 interface StatsCardProps {
   title: string;
@@ -6,31 +7,81 @@ interface StatsCardProps {
   subtitle?: string;
   percentage?: string;
   variant?: "default" | "profit" | "loss" | "neutral";
+  icon?: LucideIcon;
+  trend?: "up" | "down" | "neutral";
 }
 
-export const StatsCard = ({ title, value, subtitle, percentage, variant = "default" }: StatsCardProps) => {
+export const StatsCard = ({ 
+  title, 
+  value, 
+  subtitle, 
+  percentage, 
+  variant = "default",
+  icon: Icon,
+  trend
+}: StatsCardProps) => {
   return (
-    <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1 h-full flex flex-col">
-      <h3 className="text-sm text-muted-foreground font-medium mb-3">{title}</h3>
-
+    <div className={cn(
+      "relative overflow-hidden rounded-2xl p-6 border transition-all duration-300 hover-lift group",
+      "bg-card/80 backdrop-blur-sm",
+      variant === "profit" && "stat-profit",
+      variant === "loss" && "stat-loss",
+      variant === "default" && "border-border/50 hover:border-primary/30",
+      variant === "neutral" && "border-border/50"
+    )}>
+      {/* Background glow effect */}
       <div className={cn(
-        "text-3xl font-bold mb-1",
-        variant === "profit" && "text-profit",
-        variant === "loss" && "text-loss",
-        variant === "neutral" && "text-neutral",
-        variant === "default" && "text-foreground"
-      )}>
-        {value}
-      </div>
+        "absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 transition-opacity duration-300 group-hover:opacity-40",
+        variant === "profit" && "bg-profit",
+        variant === "loss" && "bg-loss",
+        variant === "default" && "bg-primary",
+        variant === "neutral" && "bg-muted-foreground"
+      )} />
 
-      <div className="flex items-center gap-2 mt-2 min-h-[20px]">
-        {subtitle && (
-          <span className="text-sm text-muted-foreground">{subtitle}</span>
-        )}
-        {percentage && (
-          <span className="text-sm font-medium text-accent-foreground bg-accent/20 px-2 py-1 rounded-lg">
-            {percentage}
+      <div className="relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+            {title}
           </span>
+          {Icon && (
+            <div className={cn(
+              "p-2 rounded-xl",
+              variant === "profit" && "bg-profit/10 text-profit",
+              variant === "loss" && "bg-loss/10 text-loss",
+              variant === "default" && "bg-primary/10 text-primary",
+              variant === "neutral" && "bg-muted text-muted-foreground"
+            )}>
+              <Icon className="h-5 w-5" />
+            </div>
+          )}
+        </div>
+
+        <div className={cn(
+          "text-3xl font-bold font-mono tracking-tight mb-2",
+          variant === "profit" && "text-profit",
+          variant === "loss" && "text-loss",
+          variant === "neutral" && "text-muted-foreground",
+          variant === "default" && "text-foreground"
+        )}>
+          {value}
+        </div>
+
+        {(subtitle || percentage) && (
+          <div className="flex items-center gap-2">
+            {subtitle && (
+              <span className="text-sm text-muted-foreground">{subtitle}</span>
+            )}
+            {percentage && (
+              <span className={cn(
+                "text-xs font-semibold px-2 py-1 rounded-lg",
+                trend === "up" && "bg-profit/15 text-profit",
+                trend === "down" && "bg-loss/15 text-loss",
+                !trend && "bg-accent/15 text-accent-foreground"
+              )}>
+                {percentage}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>

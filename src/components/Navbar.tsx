@@ -1,6 +1,20 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Calendar, BarChart3, LogOut, Moon, Sun, Menu, Home, ChevronDown, List, FileText, Link as LinkIcon, CheckSquare } from "lucide-react";
+import { 
+  Calendar, 
+  BarChart3, 
+  LogOut, 
+  Moon, 
+  Sun, 
+  Menu, 
+  Home, 
+  ChevronDown, 
+  List, 
+  FileText, 
+  Link as LinkIcon, 
+  CheckSquare,
+  Sparkles
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/ThemeProvider";
 import { useChallenge } from "@/contexts/ChallengeContext";
@@ -17,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
+import { cn } from "@/lib/utils";
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -51,110 +66,147 @@ export const Navbar = () => {
     requireVerification(performSignOut);
   };
 
+  const NavButton = ({ to, icon: Icon, label, isActive }: { to: string; icon: any; label: string; isActive: boolean }) => (
+    <Link to={to}>
+      <Button
+        variant={isActive ? "default" : "ghost"}
+        size="sm"
+        className={cn(
+          "gap-2 h-9 px-4 font-medium",
+          isActive && "shadow-md"
+        )}
+      >
+        <Icon className="h-4 w-4" />
+        <span className="hidden lg:inline">{label}</span>
+      </Button>
+    </Link>
+  );
+
   return (
-    <nav className="border-b border-border/30 glass-premium sticky top-0 z-50 shadow-premium">
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-        <div className="flex items-center justify-between h-20">
-          <div className="flex items-center gap-8">
-            <Link to="/home" className="hover:scale-105 transition-transform duration-300">
-              <h1 className="text-3xl font-bold gradient-text cursor-pointer">
+    <nav className="sticky top-0 z-50 border-b border-border/40 glass-premium">
+      <div className="max-w-7xl mx-auto px-4 md:px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-6">
+            <Link to="/home" className="flex items-center gap-2 group">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-primary rounded-lg blur-md opacity-50 group-hover:opacity-75 transition-opacity" />
+                <div className="relative bg-gradient-primary p-2 rounded-lg">
+                  <Sparkles className="h-5 w-5 text-primary-foreground" />
+                </div>
+              </div>
+              <span className="text-xl font-bold gradient-text hidden sm:block">
                 Tradeify
-              </h1>
+              </span>
             </Link>
 
-            {/* Only show navigation when not on home or profile page */}
+            {/* Challenge Navigation - Desktop */}
             {shouldShowChallengeNav && (
-              <>
-                {/* Challenge Switcher - Desktop */}
+              <div className="hidden md:flex items-center gap-1">
+                {/* Challenge Switcher */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-2 hidden md:flex border-2 h-11 px-5 hover:border-primary/50 transition-all">
-                      <span className="font-semibold">{selectedChallenge.name}</span>
-                      <ChevronDown className="h-4 w-4 opacity-60" />
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="gap-2 h-9 px-3 max-w-[180px] font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      <span className="truncate">{selectedChallenge.name}</span>
+                      <ChevronDown className="h-3 w-3 opacity-60 flex-shrink-0" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="glass-strong border-2 min-w-[240px]">
-                    {challenges.map((challenge) => (
+                  <DropdownMenuContent align="start" className="w-56 glass-strong">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
+                      Switch Challenge
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {challenges.filter(c => c.status !== "Achive").map((challenge) => (
                       <DropdownMenuItem
                         key={challenge.id}
                         onClick={() => setSelectedChallenge(challenge)}
-                        className="cursor-pointer py-3 px-4 text-base"
+                        className={cn(
+                          "cursor-pointer",
+                          challenge.id === selectedChallenge.id && "bg-primary/10 text-primary"
+                        )}
                       >
                         {challenge.name}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/home")} className="cursor-pointer py-3 px-4 text-base font-semibold text-primary">
-                      View All Challenges
+                    <DropdownMenuItem 
+                      onClick={() => navigate("/home")} 
+                      className="cursor-pointer text-primary font-medium"
+                    >
+                      <Home className="h-4 w-4 mr-2" />
+                      All Challenges
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="hidden md:flex gap-2">
-                  <Link to="/dashboard">
-                    <Button
-                      variant={location.pathname === "/dashboard" ? "default" : "ghost"}
-                      className="gap-2 transition-all hover:scale-105 h-11 px-4"
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      Dashboard
-                    </Button>
-                  </Link>
+                <div className="h-4 w-px bg-border/50 mx-2" />
 
-                  <Link to="/calendar">
-                    <Button
-                      variant={location.pathname === "/calendar" ? "default" : "ghost"}
-                      className="gap-2 transition-all hover:scale-105 h-11 px-4"
-                    >
-                      <Calendar className="h-4 w-4" />
-                      Calendar
-                    </Button>
-                  </Link>
-
-                  <Link to="/trades">
-                    <Button
-                      variant={location.pathname === "/trades" ? "default" : "ghost"}
-                      className="gap-2 transition-all hover:scale-105 h-11 px-4"
-                    >
-                      <List className="h-4 w-4" />
-                      Trade List
-                    </Button>
-                  </Link>
-
-                  {/* Additional Tools - Available in challenge pages */}
+                {/* Main Navigation */}
+                <div className="flex items-center gap-1">
+                  <NavButton 
+                    to="/dashboard" 
+                    icon={BarChart3} 
+                    label="Dashboard" 
+                    isActive={location.pathname === "/dashboard"} 
+                  />
+                  <NavButton 
+                    to="/calendar" 
+                    icon={Calendar} 
+                    label="Calendar" 
+                    isActive={location.pathname === "/calendar"} 
+                  />
+                  <NavButton 
+                    to="/trades" 
+                    icon={List} 
+                    label="Trades" 
+                    isActive={location.pathname === "/trades"} 
+                  />
+                  
+                  {/* Tools Menu */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="gap-2 transition-all hover:scale-105 h-11 px-4">
+                      <Button variant="ghost" size="sm" className="gap-2 h-9 px-3">
                         <Menu className="h-4 w-4" />
-                        Additional Tools
+                        <span className="hidden lg:inline">Tools</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="glass-strong border-2 w-56">
-                      <DropdownMenuItem onClick={() => navigate("/notes")} className="cursor-pointer py-3">
+                    <DropdownMenuContent align="start" className="w-48 glass-strong">
+                      <DropdownMenuItem onClick={() => navigate("/notes")} className="cursor-pointer gap-2">
+                        <FileText className="h-4 w-4" />
                         Notes
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/checklists")} className="cursor-pointer py-3">
+                      <DropdownMenuItem onClick={() => navigate("/checklists")} className="cursor-pointer gap-2">
+                        <CheckSquare className="h-4 w-4" />
                         Checklists
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/links")} className="cursor-pointer py-3">
+                      <DropdownMenuItem onClick={() => navigate("/links")} className="cursor-pointer gap-2">
+                        <LinkIcon className="h-4 w-4" />
                         Links
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </>
+              </div>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Right Side Actions */}
+          <div className="flex items-center gap-2">
             {user && (
-              <Link to="/profile" className="hidden md:flex items-center gap-3 mr-2 cursor-pointer hover:opacity-90 transition-all group">
+              <Link 
+                to="/profile" 
+                className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors group"
+              >
                 <img
                   src={user.photoURL || "https://via.placeholder.com/40"}
                   alt="Profile"
-                  className="w-10 h-10 rounded-full ring-2 ring-primary/30 transition-all group-hover:ring-primary/60 group-hover:scale-105"
+                  className="w-8 h-8 rounded-full ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
                 />
-                <span className="text-sm font-medium text-foreground/90 group-hover:text-foreground">
+                <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors max-w-[120px] truncate">
                   {user.displayName}
                 </span>
               </Link>
@@ -162,118 +214,101 @@ export const Navbar = () => {
 
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              className="transition-all hover:scale-110 h-11 w-11"
+              className="text-muted-foreground hover:text-foreground"
             >
               {theme === "light" ? (
-                <Moon className="h-5 w-5" />
+                <Moon className="h-4 w-4" />
               ) : (
-                <Sun className="h-5 w-5" />
+                <Sun className="h-4 w-4" />
               )}
             </Button>
 
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               onClick={handleSignOut}
-              className="transition-all hover:scale-110 hover:text-destructive h-11 w-11"
+              className="text-muted-foreground hover:text-destructive"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
-        {user && (
-          <div className="md:hidden flex gap-2 pb-4">
-            {shouldShowChallengeNav && (
-              <>
-                {/* Challenge Switcher - Mobile */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="flex-1 justify-between border-2 h-11">
-                      <span className="truncate text-sm font-semibold">{selectedChallenge.name}</span>
-                      <ChevronDown className="h-4 w-4 ml-2 flex-shrink-0 opacity-60" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="glass-strong border-2 w-56">
-                    {challenges.map((challenge) => (
-                      <DropdownMenuItem
-                        key={challenge.id}
-                        onClick={() => setSelectedChallenge(challenge)}
-                        className="cursor-pointer py-3"
-                      >
-                        {challenge.name}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/home")} className="cursor-pointer py-3 font-semibold text-primary">
-                      View All Challenges
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <Link to="/calendar" className="flex-1">
-                  <Button
-                    variant={location.pathname === "/calendar" ? "default" : "ghost"}
-                    className="w-full gap-2 h-11"
-                  >
-                    <Calendar className="h-4 w-4" />
-                  </Button>
-                </Link>
-
-                <Link to="/dashboard" className="flex-1">
-                  <Button
-                    variant={location.pathname === "/dashboard" ? "default" : "ghost"}
-                    className="w-full gap-2 h-11"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                  </Button>
-                </Link>
-
-                <Link to="/trades" className="flex-1">
-                  <Button
-                    variant={location.pathname === "/trades" ? "default" : "ghost"}
-                    className="w-full gap-2 h-11"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </>
-            )}
-
-            {/* Always show Notes and Links on mobile */}
+        {user && shouldShowChallengeNav && (
+          <div className="md:hidden flex gap-1.5 pb-3 overflow-x-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex-1 h-11">
+                <Button variant="outline" size="sm" className="gap-2 flex-shrink-0">
+                  <span className="truncate max-w-[100px]">{selectedChallenge.name}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48 glass-strong">
+                {challenges.filter(c => c.status !== "Achive").map((challenge) => (
+                  <DropdownMenuItem
+                    key={challenge.id}
+                    onClick={() => setSelectedChallenge(challenge)}
+                    className="cursor-pointer"
+                  >
+                    {challenge.name}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/home")} className="cursor-pointer text-primary">
+                  All Challenges
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Link to="/dashboard">
+              <Button
+                variant={location.pathname === "/dashboard" ? "default" : "ghost"}
+                size="icon-sm"
+              >
+                <BarChart3 className="h-4 w-4" />
+              </Button>
+            </Link>
+
+            <Link to="/calendar">
+              <Button
+                variant={location.pathname === "/calendar" ? "default" : "ghost"}
+                size="icon-sm"
+              >
+                <Calendar className="h-4 w-4" />
+              </Button>
+            </Link>
+
+            <Link to="/trades">
+              <Button
+                variant={location.pathname === "/trades" ? "default" : "ghost"}
+                size="icon-sm"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </Link>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon-sm">
                   <Menu className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="glass-strong border-2 w-56">
-                <DropdownMenuLabel className="text-base">Tools</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/notes")} className="cursor-pointer py-3">
-                  <FileText className="h-4 w-4 mr-2" />
+              <DropdownMenuContent align="end" className="w-48 glass-strong">
+                <DropdownMenuItem onClick={() => navigate("/notes")} className="cursor-pointer gap-2">
+                  <FileText className="h-4 w-4" />
                   Notes
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/checklists")} className="cursor-pointer py-3">
-                  <CheckSquare className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={() => navigate("/checklists")} className="cursor-pointer gap-2">
+                  <CheckSquare className="h-4 w-4" />
                   Checklists
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/links")} className="cursor-pointer py-3">
-                  <LinkIcon className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={() => navigate("/links")} className="cursor-pointer gap-2">
+                  <LinkIcon className="h-4 w-4" />
                   Links
                 </DropdownMenuItem>
-                {!shouldShowChallengeNav && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate("/home")} className="cursor-pointer py-3">
-                      <Home className="h-4 w-4 mr-2" />
-                      Challenges
-                    </DropdownMenuItem>
-                  </>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
