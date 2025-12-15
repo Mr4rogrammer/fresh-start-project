@@ -352,64 +352,63 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="max-w-7xl mx-auto p-4 md:p-8 animate-fade-in">
-        <div className="flex flex-col gap-4 mb-8 animate-slide-down">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="max-w-7xl mx-auto p-2 sm:p-4 md:p-8 animate-fade-in">
+        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-8 animate-slide-down">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2 ">Dashboard</h1>
-              <p className="text-muted-foreground text-lg">
+              <h1 className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Dashboard</h1>
+              <p className="text-muted-foreground text-sm sm:text-lg">
                 Analyze your trading performance
               </p>
             </div>
 
             {/* Quick Actions */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 onClick={exportToCSV}
                 variant="outline"
-                className="gap-2 hover:scale-105 transition-all border-2"
+                className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
                 disabled={filteredTrades.length === 0}
               >
-                <FileDown className="h-4 w-4" />
-                Export CSV
+                <FileDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Export</span> CSV
               </Button>
               <Button
                 onClick={exportToJSON}
                 variant="outline"
-                className="gap-2 hover:scale-105 transition-all border-2"
+                className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
                 disabled={filteredTrades.length === 0}
               >
-                <FileJson className="h-4 w-4" />
-                Export JSON
+                <FileJson className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Export</span> JSON
               </Button>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Date Range</label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 p-3 sm:p-6 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <div className="space-y-1 sm:space-y-2 col-span-2 md:col-span-1">
+              <label className="text-xs sm:text-sm font-medium">Date Range</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal hover:scale-105 transition-all",
+                      "w-full justify-start text-left font-normal hover:scale-105 transition-all text-xs sm:text-sm h-9 sm:h-10",
                       !dateRange && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     {dateRange?.from ? (
                       dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd, y")} -{" "}
-                          {format(dateRange.to, "LLL dd, y")}
-                        </>
+                        <span className="truncate">
+                          {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd")}
+                        </span>
                       ) : (
                         format(dateRange.from, "LLL dd, y")
                       )
                     ) : (
-                      <span>Filter desired trade history</span>
+                      <span>Filter dates</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -420,16 +419,16 @@ const Dashboard = () => {
                     defaultMonth={dateRange?.from}
                     selected={dateRange}
                     onSelect={setDateRange}
-                    numberOfMonths={2}
+                    numberOfMonths={1}
                     className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Direction</label>
+            <div className="space-y-1 sm:space-y-2">
+              <label className="text-xs sm:text-sm font-medium">Direction</label>
               <Select value={directionFilter} onValueChange={setDirectionFilter}>
-                <SelectTrigger className="hover:scale-105 transition-all">
+                <SelectTrigger className="hover:scale-105 transition-all h-9 sm:h-10 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
@@ -439,10 +438,10 @@ const Dashboard = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Result</label>
+            <div className="space-y-1 sm:space-y-2">
+              <label className="text-xs sm:text-sm font-medium">Result</label>
               <Select value={profitFilter} onValueChange={setProfitFilter}>
-                <SelectTrigger className="hover:scale-105 transition-all">
+                <SelectTrigger className="hover:scale-105 transition-all h-9 sm:h-10 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
@@ -454,23 +453,23 @@ const Dashboard = () => {
               </Select>
             </div>
             <div className="flex items-end gap-2">
-              <Button onClick={clearFilters} variant="outline" className="flex-1 hover:scale-105 transition-all">
-                Clear Filters
+              <Button onClick={clearFilters} variant="outline" className="flex-1 hover:scale-105 transition-all h-9 sm:h-10 text-xs sm:text-sm">
+                Clear
               </Button>
               <Button
                 onClick={handleShare}
                 variant="default"
-                className="flex-1 gap-2 hover:scale-105 transition-all shadow-lg hover:shadow-xl hover:shadow-primary/20"
+                className="flex-1 gap-1 sm:gap-2 hover:scale-105 transition-all shadow-lg hover:shadow-xl hover:shadow-primary/20 h-9 sm:h-10 text-xs sm:text-sm"
                 disabled={isCapturing || filteredTrades.length === 0}
               >
-                <Share2 className="h-4 w-4" />
-                Share Stats
+                <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Share</span>
               </Button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
           <div className="animate-scale-in" style={{ animationDelay: "0s" }}>
             <StatsCard
               title="Opening Balance"
@@ -544,9 +543,50 @@ const Dashboard = () => {
 
         {/* Profit Progression Chart */}
         {chartData.length > 0 && (
-          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50 mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-fade-in">
-            <h3 className="text-xl font-semibold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Balance Progression</h3>
-            <ResponsiveContainer width="100%" height={400}>
+          <div className="bg-card/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-6 border border-border/50 mb-4 sm:mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-fade-in">
+            <h3 className="text-base sm:text-xl font-semibold mb-3 sm:mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Balance Progression</h3>
+            <ResponsiveContainer width="100%" height={250} className="sm:hidden">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis
+                  dataKey="date"
+                  stroke="hsl(var(--muted-foreground))"
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  tickMargin={8}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  tickFormatter={(value) => `$${value}`}
+                  width={50}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    color: 'hsl(var(--foreground))',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                  }}
+                  formatter={(value: number, name: string) => {
+                    if (name === 'balance') return [`$${value.toFixed(2)}`, 'Balance'];
+                    if (name === 'profit') return [`$${value >= 0 ? '+' : ''}${value.toFixed(2)}`, 'Daily P&L'];
+                    if (name === 'trades') return [`${value} trade${value !== 1 ? 's' : ''}`, 'Trades'];
+                    return value;
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="balance"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))', r: 2 }}
+                  activeDot={{ r: 5, className: "animate-pulse" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={400} className="hidden sm:block">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                 <XAxis
@@ -594,7 +634,7 @@ const Dashboard = () => {
         )}
 
         {/* Additional Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
           <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <span className="text-2xl">🏆</span>
@@ -641,25 +681,25 @@ const Dashboard = () => {
           </div>
 
 
-          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <span className="text-2xl">📊</span>
+          <div className="bg-card/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+              <span className="text-xl sm:text-2xl">📊</span>
               Average Trade
             </h3>
             {filteredTrades.length > 0 ? (
               <div>
                 <p className={cn(
-                  "text-3xl font-bold mb-2",
+                  "text-2xl sm:text-3xl font-bold mb-1 sm:mb-2",
                   netProfit / totalTrades > 0 ? "text-profit" : "text-loss"
                 )}>
                   {netProfit / totalTrades >= 0 ? '+' : ''}${(netProfit / totalTrades).toFixed(2)}
                 </p>
-                <p className="text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Per trade
                 </p>
               </div>
             ) : (
-              <p className="text-muted-foreground">No trades yet</p>
+              <p className="text-muted-foreground text-sm">No trades yet</p>
             )}
           </div>
         </div>

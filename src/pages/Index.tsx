@@ -215,58 +215,63 @@ const Index = () => {
     <div className="h-screen bg-gradient-mesh flex flex-col overflow-hidden">
       <Navbar />
 
-      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full p-4 md:p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full p-2 sm:p-4 md:p-6 overflow-hidden">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-fade-in">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-primary rounded-xl blur-lg opacity-30" />
-              <div className="relative bg-gradient-primary p-3 rounded-xl">
-                <Calendar className="h-6 w-6 text-primary-foreground" />
+        <div className="flex flex-col gap-3 sm:gap-4 mb-3 sm:mb-6 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="relative hidden sm:block">
+                <div className="absolute inset-0 bg-gradient-primary rounded-xl blur-lg opacity-30" />
+                <div className="relative bg-gradient-primary p-3 rounded-xl">
+                  <Calendar className="h-6 w-6 text-primary-foreground" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold gradient-text">Calendar</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {monthlyTrades.length} trades • 
+                  <span className={cn("font-semibold ml-1", isMonthlyProfit ? "text-profit" : "text-loss")}>
+                    {isMonthlyProfit ? "+" : ""}${Math.abs(monthlyProfit).toFixed(2)}
+                  </span>
+                </p>
               </div>
             </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold gradient-text">Calendar</h1>
-              <p className="text-sm text-muted-foreground">
-                {monthlyTrades.length} trades this month • 
-                <span className={cn("font-semibold ml-1", isMonthlyProfit ? "text-profit" : "text-loss")}>
-                  {isMonthlyProfit ? "+" : ""}${Math.abs(monthlyProfit).toFixed(2)}
-                </span>
-              </p>
+
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button variant="ghost" size="sm" onClick={goToToday} className="text-muted-foreground text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9">
+                Today
+              </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={goToToday} className="text-muted-foreground">
-              Today
+          {/* Month Navigation - Separate row on mobile */}
+          <div className="flex items-center justify-center gap-1 bg-card/60 backdrop-blur-sm rounded-xl p-1 border border-border/50">
+            <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(-1)} className="h-8 w-8 sm:h-9 sm:w-9">
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center gap-1 bg-card/60 backdrop-blur-sm rounded-xl p-1 border border-border/50">
-              <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(-1)}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-base font-semibold px-3 min-w-[160px] text-center">
-                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-              </span>
-              <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(1)}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <span className="text-sm sm:text-base font-semibold px-2 sm:px-3 min-w-[120px] sm:min-w-[160px] text-center">
+              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </span>
+            <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(1)} className="h-8 w-8 sm:h-9 sm:w-9">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
         {/* Calendar Grid */}
         <div className="flex-1 flex flex-col min-h-0 animate-scale-in">
           {/* Day headers */}
-          <div className="grid grid-cols-7 gap-2 mb-3">
-            {dayNames.map(day => (
-              <div key={day} className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider py-2">
-                {day}
+          <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-3">
+            {dayNames.map((day, index) => (
+              <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider py-1 sm:py-2">
+                <span className="sm:hidden">{day.charAt(0)}</span>
+                <span className="hidden sm:inline">{day}</span>
               </div>
             ))}
           </div>
 
           {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-2 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
             {renderCalendar()}
           </div>
         </div>

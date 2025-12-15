@@ -140,35 +140,34 @@ const TradeList = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container mx-auto p-4 md:p-6 animate-fade-in">
+      <div className="container mx-auto p-2 sm:p-4 md:p-6 animate-fade-in">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-6">Trade List</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Trade List</h1>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-card rounded-lg border">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Date Range</label>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 bg-card rounded-lg border">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-2 block">Date Range</label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal text-xs sm:text-sm h-9 sm:h-10",
                       !dateRange && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     {dateRange?.from ? (
                       dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd, y")} -{" "}
-                          {format(dateRange.to, "LLL dd, y")}
-                        </>
+                        <span className="truncate">
+                          {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd")}
+                        </span>
                       ) : (
                         format(dateRange.from, "LLL dd, y")
                       )
                     ) : (
-                      <span>Pick a date range</span>
+                      <span>Pick dates</span>
                     )}
                   </Button>
                 </PopoverTrigger>
@@ -179,16 +178,16 @@ const TradeList = () => {
                     defaultMonth={dateRange?.from}
                     selected={dateRange}
                     onSelect={setDateRange}
-                    numberOfMonths={2}
+                    numberOfMonths={1}
                     className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Direction</label>
+              <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-2 block">Direction</label>
               <Select value={directionFilter} onValueChange={setDirectionFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -199,9 +198,9 @@ const TradeList = () => {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Result</label>
+              <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-2 block">Result</label>
               <Select value={profitFilter} onValueChange={setProfitFilter}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9 sm:h-10 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,21 +212,93 @@ const TradeList = () => {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={clearFilters} variant="outline" className="w-full">
-                Clear Filters
+              <Button onClick={clearFilters} variant="outline" className="w-full h-9 sm:h-10 text-xs sm:text-sm">
+                Clear
               </Button>
             </div>
           </div>
 
           {/* Trade Count */}
-          <div className="mb-4">
-            <p className="text-sm text-muted-foreground">
+          <div className="mb-3 sm:mb-4">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Showing {filteredTrades.length} of {trades.length} trades
             </p>
           </div>
 
-          {/* Table */}
-          <div className="border rounded-lg overflow-hidden">
+          {/* Mobile Trade Cards */}
+          <div className="md:hidden space-y-3">
+            {filteredTrades.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground bg-card rounded-lg border">
+                No trades found
+              </div>
+            ) : (
+              filteredTrades.map((trade) => (
+                <div key={trade.id} className="bg-card rounded-lg border p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{trade.pair}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          trade.direction === "Buy"
+                            ? "bg-profit/10 text-profit"
+                            : "bg-loss/10 text-loss"
+                        }`}
+                      >
+                        {trade.direction}
+                      </span>
+                    </div>
+                    <span
+                      className={`font-bold text-sm ${
+                        trade.profit > 0
+                          ? "text-profit"
+                          : trade.profit < 0
+                            ? "text-loss"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {trade.profit > 0 ? '+' : ''}${trade.profit.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide">Date</span>
+                      <span className="text-foreground">{trade.date}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide">Entry</span>
+                      <span className="text-foreground font-mono">{trade.entryPrice}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide">Exit</span>
+                      <span className="text-foreground font-mono">{trade.exitPrice}</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide">SL</span>
+                      <span className="text-foreground font-mono">{trade.slPrice || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide">Lot</span>
+                      <span className="text-foreground">{trade.lotSize}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase tracking-wide">R:R</span>
+                      <span className="text-foreground">{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</span>
+                    </div>
+                  </div>
+                  {trade.notes && (
+                    <p className="text-xs text-muted-foreground pt-1 border-t border-border/50 truncate">
+                      {trade.notes}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table */}
+          <div className="hidden md:block border rounded-lg overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -248,7 +319,7 @@ const TradeList = () => {
               <TableBody>
                 {filteredTrades.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                       No trades found
                     </TableCell>
                   </TableRow>
@@ -260,8 +331,8 @@ const TradeList = () => {
                       <TableCell>
                         <span
                           className={`px-2 py-1 rounded text-xs font-medium ${trade.direction === "Buy"
-                            ? "bg-green-500/10 text-green-500"
-                            : "bg-red-500/10 text-red-500"
+                            ? "bg-profit/10 text-profit"
+                            : "bg-loss/10 text-loss"
                             }`}
                         >
                           {trade.direction}
@@ -276,9 +347,9 @@ const TradeList = () => {
                       <TableCell>
                         <span
                           className={`font-semibold ${trade.profit > 0
-                            ? "text-green-500"
+                            ? "text-profit"
                             : trade.profit < 0
-                              ? "text-red-500"
+                              ? "text-loss"
                               : "text-muted-foreground"
                             }`}
                         >
@@ -291,7 +362,7 @@ const TradeList = () => {
                       <TableCell className="max-w-xs truncate">{trade.notes || "-"}</TableCell>
                       <TableCell onClick={() => trade.link && trade.link.trim() !== "" && trade.link.includes("https") && window.open(trade.link, "_blank")}>
                         <span
-                          className={`font-semibold ${trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "text-green-500" : "text-gray-500"}`}
+                          className={`font-semibold cursor-pointer ${trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "text-profit" : "text-muted-foreground"}`}
                         >
                           {trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "Open" : "-"}
 
