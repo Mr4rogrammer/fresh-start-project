@@ -1,6 +1,12 @@
 import { DayData } from "@/types/trade";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CalendarDayProps {
   dayData: DayData | null;
@@ -17,25 +23,22 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
   const isProfit = hasData && dayData.totalProfit > 0;
   const isLoss = hasData && dayData.totalProfit < 0;
 
-  return (
+  const winCount = hasData ? dayData.trades.filter(t => t.profit > 0).length : 0;
+  const lossCount = hasData ? dayData.trades.filter(t => t.profit < 0).length : 0;
+  const pairs = hasData ? [...new Set(dayData.trades.map(t => t.pair))].slice(0, 3) : [];
+
+  const dayButton = (
     <button
       onClick={onClick}
       className={cn(
         "group relative w-full h-full min-h-0 rounded-2xl p-3 md:p-4 transition-all duration-300",
         "flex flex-col items-center justify-center gap-1",
         "cursor-pointer active:scale-[0.97]",
-        
-        // Profit styling
         isProfit && "calendar-day-profit",
-        
-        // Loss styling
         isLoss && "calendar-day-loss",
-        
-        // No data styling
         !hasData && "bg-card/40 border border-border/30 hover:bg-card/60 hover:border-border/50"
       )}
     >
-      {/* Day number */}
       <span className={cn(
         "text-xl md:text-2xl font-bold transition-colors",
         hasData ? "text-foreground" : "text-muted-foreground/60"
@@ -45,7 +48,6 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
 
       {hasData && (
         <>
-          {/* Profit/Loss indicator */}
           <div className="flex items-center gap-1">
             {isProfit ? (
               <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-profit" />
@@ -61,12 +63,57 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
             </span>
           </div>
           
-          {/* Trade count */}
           <span className="text-xs text-muted-foreground font-medium">
             {dayData.tradeCount} {dayData.tradeCount === 1 ? 'trade' : 'trades'}
           </span>
         </>
       )}
     </button>
+  );
+
+  if (!hasData) {
+    return dayButton;
+  }
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {dayButton}
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="glass-strong border-border/50 p-3 max-w-[200px]"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs text-muted-foreground">Total P/L</span>
+              <span className={cn(
+                "font-mono font-bold text-sm",
+                isProfit ? "text-profit" : "text-loss"
+              )}>
+                {isProfit ? '+' : ''}${dayData.totalProfit.toFixed(2)}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-xs text-muted-foreground">Win / Loss</span>
+              <span className="text-sm font-medium">
+                <span className="text-profit">{winCount}W</span>
+                {' / '}
+                <span className="text-loss">{lossCount}L</span>
+              </span>
+            </div>
+
+            {pairs.length > 0 && (
+              <div className="pt-1 border-t border-border/30">
+                <span className="text-xs text-muted-foreground">Pairs: </span>
+                <span className="text-xs font-medium">{pairs.join(', ')}</span>
+              </div>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
