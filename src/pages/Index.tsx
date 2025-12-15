@@ -7,6 +7,7 @@ import { useChallenge } from "@/contexts/ChallengeContext";
 import { useData } from "@/contexts/DataContext";
 import { Trade, DayData } from "@/types/trade";
 import { CalendarDay } from "@/components/CalendarDay";
+import { WeeklySummary } from "@/components/WeeklySummary";
 import { TradeModal } from "@/components/TradeModal";
 import { AddTradeModal } from "@/components/AddTradeModal";
 import { Navbar } from "@/components/Navbar";
@@ -172,21 +173,70 @@ const Index = () => {
 
   const goToToday = () => setCurrentDate(new Date());
 
+  const getWeeklyStats = (weekDays: (number | null)[]) => {
+    let totalProfit = 0;
+    let tradeCount = 0;
+    let winCount = 0;
+    let lossCount = 0;
+
+    weekDays.forEach(day => {
+      if (day !== null) {
+        const dayData = getDayData(day);
+        if (dayData) {
+          totalProfit += dayData.totalProfit;
+          tradeCount += dayData.tradeCount;
+          winCount += dayData.trades.filter(t => t.profit > 0).length;
+          lossCount += dayData.trades.filter(t => t.profit < 0).length;
+        }
+      }
+    });
+
+    return { totalProfit, tradeCount, winCount, lossCount };
+  };
+
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
-    const days = [];
+    const elements: JSX.Element[] = [];
+    let currentWeek: (number | null)[] = [];
 
+    // Add empty days for the first week
     for (let i = 0; i < firstDay; i++) {
-      days.push(<CalendarDay key={`empty-${i}`} dayData={null} dayNumber={null} onClick={() => {}} />);
+      currentWeek.push(null);
+      elements.push(<CalendarDay key={`empty-${i}`} dayData={null} dayNumber={null} onClick={() => {}} />);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
+      currentWeek.push(day);
       const dayData = getDayData(day);
-      days.push(<CalendarDay key={day} dayData={dayData} dayNumber={day} onClick={() => handleDayClick(day)} />);
+      elements.push(<CalendarDay key={day} dayData={dayData} dayNumber={day} onClick={() => handleDayClick(day)} />);
+
+      // End of week (Saturday) or last day of month
+      if ((firstDay + day) % 7 === 0 || day === daysInMonth) {
+        // Pad the last week if needed
+        if (day === daysInMonth && (firstDay + day) % 7 !== 0) {
+          const remaining = 7 - ((firstDay + day) % 7);
+          for (let i = 0; i < remaining; i++) {
+            currentWeek.push(null);
+            elements.push(<CalendarDay key={`empty-end-${i}`} dayData={null} dayNumber={null} onClick={() => {}} />);
+          }
+        }
+
+        const weekStats = getWeeklyStats(currentWeek);
+        elements.push(
+          <WeeklySummary
+            key={`week-${day}`}
+            totalProfit={weekStats.totalProfit}
+            tradeCount={weekStats.tradeCount}
+            winCount={weekStats.winCount}
+            lossCount={weekStats.lossCount}
+          />
+        );
+        currentWeek = [];
+      }
     }
 
-    return days;
+    return elements;
   };
 
   const selectedDayTrades = selectedDate ? trades.filter(t => t.date === selectedDate) : [];
