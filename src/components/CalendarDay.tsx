@@ -59,7 +59,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
               isProfit && "text-profit",
               isLoss && "text-loss"
             )}>
-              {isProfit ? '+' : ''}${Math.abs(dayData.totalProfit).toFixed(2)}
+              {isProfit ? '+' : ''}${Math.abs(dayData.totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           
@@ -92,7 +92,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
                 "font-mono font-bold text-sm",
                 isProfit ? "text-profit" : "text-loss"
               )}>
-                {isProfit ? '+' : ''}${dayData.totalProfit.toFixed(2)}
+                {isProfit ? '+' : ''}${Math.abs(dayData.totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             
