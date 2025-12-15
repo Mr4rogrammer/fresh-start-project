@@ -57,7 +57,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
               isProfit && "text-profit",
               isLoss && "text-loss"
             )}>
-              {isProfit ? '+' : ''}${Math.abs(dayData.totalProfit).toFixed(0)}
+              {isProfit ? '+' : ''}${Math.abs(dayData.totalProfit).toFixed(2)}
             </span>
           </div>
           
