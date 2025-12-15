@@ -31,8 +31,8 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
     <button
       onClick={onClick}
       className={cn(
-        "group relative w-full h-full min-h-0 rounded-2xl p-3 md:p-4 transition-all duration-300",
-        "flex flex-col items-center justify-center gap-1",
+        "group relative w-full h-full min-h-0 rounded-xl sm:rounded-2xl p-1.5 sm:p-3 md:p-4 transition-all duration-300",
+        "flex flex-col items-center justify-center gap-0.5 sm:gap-1",
         "cursor-pointer active:scale-[0.97]",
         isProfit && "calendar-day-profit",
         isLoss && "calendar-day-loss",
@@ -40,7 +40,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
       )}
     >
       <span className={cn(
-        "text-xl md:text-2xl font-bold transition-colors",
+        "text-sm sm:text-xl md:text-2xl font-bold transition-colors",
         hasData ? "text-foreground" : "text-muted-foreground/60"
       )}>
         {dayNumber}
@@ -48,14 +48,14 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
 
       {hasData && (
         <>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             {isProfit ? (
-              <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-profit" />
+              <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 text-profit" />
             ) : isLoss ? (
-              <TrendingDown className="h-3 w-3 md:h-4 md:w-4 text-loss" />
+              <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 text-loss" />
             ) : null}
             <span className={cn(
-              "text-sm md:text-base font-bold font-mono",
+              "text-[10px] sm:text-sm md:text-base font-bold font-mono",
               isProfit && "text-profit",
               isLoss && "text-loss"
             )}>
@@ -63,7 +63,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick }: CalendarDayProps) =
             </span>
           </div>
           
-          <span className="text-xs text-muted-foreground font-medium">
+          <span className="text-[8px] sm:text-xs text-muted-foreground font-medium hidden xs:block">
             {dayData.tradeCount} {dayData.tradeCount === 1 ? 'trade' : 'trades'}
           </span>
         </>

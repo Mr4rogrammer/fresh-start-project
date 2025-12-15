@@ -22,7 +22,7 @@ export const StatsCard = ({
 }: StatsCardProps) => {
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-2xl p-6 border transition-all duration-300 hover-lift group",
+      "relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-6 border transition-all duration-300 hover-lift group",
       "bg-card/80 backdrop-blur-sm",
       variant === "profit" && "stat-profit",
       variant === "loss" && "stat-loss",
@@ -31,7 +31,7 @@ export const StatsCard = ({
     )}>
       {/* Background glow effect */}
       <div className={cn(
-        "absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-20 transition-opacity duration-300 group-hover:opacity-40",
+        "absolute -top-8 sm:-top-12 -right-8 sm:-right-12 w-20 sm:w-32 h-20 sm:h-32 rounded-full blur-3xl opacity-20 transition-opacity duration-300 group-hover:opacity-40",
         variant === "profit" && "bg-profit",
         variant === "loss" && "bg-loss",
         variant === "default" && "bg-primary",
@@ -39,25 +39,25 @@ export const StatsCard = ({
       )} />
 
       <div className="relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="flex items-start justify-between mb-2 sm:mb-4">
+          <span className="text-[10px] sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">
             {title}
           </span>
           {Icon && (
             <div className={cn(
-              "p-2 rounded-xl",
+              "p-1.5 sm:p-2 rounded-lg sm:rounded-xl",
               variant === "profit" && "bg-profit/10 text-profit",
               variant === "loss" && "bg-loss/10 text-loss",
               variant === "default" && "bg-primary/10 text-primary",
               variant === "neutral" && "bg-muted text-muted-foreground"
             )}>
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
           )}
         </div>
 
         <div className={cn(
-          "text-3xl font-bold font-mono tracking-tight mb-2",
+          "text-lg sm:text-3xl font-bold font-mono tracking-tight mb-1 sm:mb-2",
           variant === "profit" && "text-profit",
           variant === "loss" && "text-loss",
           variant === "neutral" && "text-muted-foreground",
@@ -69,11 +69,11 @@ export const StatsCard = ({
         {(subtitle || percentage) && (
           <div className="flex items-center gap-2">
             {subtitle && (
-              <span className="text-sm text-muted-foreground">{subtitle}</span>
+              <span className="text-[10px] sm:text-sm text-muted-foreground truncate">{subtitle}</span>
             )}
             {percentage && (
               <span className={cn(
-                "text-xs font-semibold px-2 py-1 rounded-lg",
+                "text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg",
                 trend === "up" && "bg-profit/15 text-profit",
                 trend === "down" && "bg-loss/15 text-loss",
                 !trend && "bg-accent/15 text-accent-foreground"
