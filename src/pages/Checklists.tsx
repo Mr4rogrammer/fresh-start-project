@@ -5,7 +5,7 @@ import { ref, push, remove, update, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, GripVertical, ArrowUp, ArrowDown, Copy } from "lucide-react";
+import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, ArrowUp, ArrowDown, Copy, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 // Checklist Item Row Component
 const ChecklistItemRow = ({
@@ -82,10 +83,10 @@ const ChecklistItemRow = ({
       
       <div
         className={cn(
-          "flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer",
+          "flex items-center gap-1 md:gap-2 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer",
           item.completed && "opacity-60"
         )}
-        style={{ paddingLeft: `${level * 24 + 8}px` }}
+        style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={(e) => {
           // Don't toggle if clicking on buttons or inputs
           if ((e.target as HTMLElement).closest('button, input')) return;
@@ -99,7 +100,7 @@ const ChecklistItemRow = ({
             setIsExpanded(!isExpanded);
           }}
           className={cn(
-            "w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors",
+            "w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0",
             !hasChildren && "invisible"
           )}
         >
@@ -128,13 +129,13 @@ const ChecklistItemRow = ({
               if (e.key === "Escape") setIsEditing(false);
             }}
             onBlur={handleEdit}
-            className="h-7 flex-1"
+            className="h-7 flex-1 text-sm"
             autoFocus
           />
         ) : (
           <span
             className={cn(
-              "flex-1 text-sm cursor-pointer",
+              "flex-1 text-xs md:text-sm cursor-pointer truncate",
               item.completed && "line-through text-muted-foreground"
             )}
             onDoubleClick={() => setIsEditing(true)}
@@ -143,14 +144,14 @@ const ChecklistItemRow = ({
           </span>
         )}
 
-        {/* Action buttons - visible on hover */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Action buttons - always visible on mobile, hover on desktop */}
+        <div className="flex items-center gap-0.5 md:gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onMoveUp(item.id)}
             disabled={!canMoveUp}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30 hidden md:flex"
           >
             <ArrowUp className="h-3.5 w-3.5" />
           </Button>
@@ -159,7 +160,7 @@ const ChecklistItemRow = ({
             size="sm"
             onClick={() => onMoveDown(item.id)}
             disabled={!canMoveDown}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30 hidden md:flex"
           >
             <ArrowDown className="h-3.5 w-3.5" />
           </Button>
@@ -169,7 +170,7 @@ const ChecklistItemRow = ({
             onClick={() => setIsAddingChild(true)}
             className="h-6 w-6 p-0 text-muted-foreground hover:text-emerald-500"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3 md:h-3.5 w-3 md:w-3.5" />
           </Button>
           <Button
             variant="ghost"
@@ -177,7 +178,7 @@ const ChecklistItemRow = ({
             onClick={() => setIsEditing(true)}
             className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
           >
-            <Edit2 className="h-3.5 w-3.5" />
+            <Edit2 className="h-3 md:h-3.5 w-3 md:w-3.5" />
           </Button>
           <Button
             variant="ghost"
@@ -185,19 +186,19 @@ const ChecklistItemRow = ({
             onClick={() => onDelete(item.id)}
             className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3 md:h-3.5 w-3 md:w-3.5" />
           </Button>
         </div>
       </div>
 
       {/* Add child input */}
       {isAddingChild && (
-        <div className="flex items-center gap-2 py-2" style={{ paddingLeft: `${(level + 1) * 24 + 36}px` }}>
+        <div className="flex items-center gap-2 py-2" style={{ paddingLeft: `${(level + 1) * 16 + 24}px` }}>
           <Input
             value={newChildText}
             onChange={(e) => setNewChildText(e.target.value)}
             placeholder="Add sub-item..."
-            className="h-8 flex-1"
+            className="h-8 flex-1 text-sm"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAddChild();
               if (e.key === "Escape") setIsAddingChild(false);
@@ -205,10 +206,12 @@ const ChecklistItemRow = ({
             autoFocus
           />
           <Button size="sm" onClick={handleAddChild} className="h-8">
-            Add
+            <span className="hidden xs:inline">Add</span>
+            <Check className="h-4 w-4 xs:hidden" />
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setIsAddingChild(false)} className="h-8">
-            Cancel
+            <span className="hidden xs:inline">Cancel</span>
+            <X className="h-4 w-4 xs:hidden" />
           </Button>
         </div>
       )}
@@ -246,6 +249,7 @@ const Checklists = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [newItemText, setNewItemText] = useState("");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const {
     isVerificationRequired,
@@ -627,143 +631,184 @@ const Checklists = () => {
   const selectedStats = selectedChecklist ? countItems(selectedChecklist.items) : { total: 0, completed: 0 };
   const progress = selectedStats.total > 0 ? Math.round((selectedStats.completed / selectedStats.total) * 100) : 0;
 
+  // Sidebar content component to reuse for desktop and mobile
+  const SidebarContent = ({ onSelectChecklist }: { onSelectChecklist?: () => void }) => (
+    <>
+      <div className="p-4 border-b">
+        <Button onClick={createNewChecklist} className="w-full gap-2" variant="default">
+          <Plus className="h-4 w-4" />
+          New Checklist
+        </Button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {checklists.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No checklists yet
+          </div>
+        ) : (
+          <>
+            {/* Original Checklists */}
+            {checklists.filter(c => !c.isDuplicate).length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider">
+                  Checklists
+                </div>
+                {checklists.filter(c => !c.isDuplicate).map((checklist) => {
+                  const stats = countItems(checklist.items);
+                  const isSelected = selectedChecklist?.id === checklist.id;
+
+                  return (
+                    <button
+                      key={checklist.id}
+                      onClick={() => {
+                        setSelectedChecklist(checklist);
+                        onSelectChecklist?.();
+                      }}
+                      className={cn(
+                        "w-full text-left p-3 rounded-lg transition-all",
+                        isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ListChecks className="h-4 w-4 shrink-0" />
+                        <span className="font-medium truncate">{checklist.title}</span>
+                      </div>
+                      <div className={cn(
+                        "text-xs mt-1",
+                        isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+                      )}>
+                        {stats.completed}/{stats.total} items
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Duplicated Checklists */}
+            {checklists.filter(c => c.isDuplicate).length > 0 && (
+              <div className="space-y-1 mt-4">
+                <div className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider flex items-center gap-2">
+                  <Copy className="h-3 w-3" />
+                  Duplicated
+                </div>
+                {checklists.filter(c => c.isDuplicate).map((checklist) => {
+                  const stats = countItems(checklist.items);
+                  const isSelected = selectedChecklist?.id === checklist.id;
+
+                  return (
+                    <button
+                      key={checklist.id}
+                      onClick={() => {
+                        setSelectedChecklist(checklist);
+                        onSelectChecklist?.();
+                      }}
+                      className={cn(
+                        "w-full text-left p-3 rounded-lg transition-all",
+                        isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted/70"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ListChecks className="h-4 w-4 shrink-0" />
+                        <span className="font-medium truncate">{checklist.title}</span>
+                      </div>
+                      <div className={cn(
+                        "text-xs mt-1",
+                        isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
+                      )}>
+                        {stats.completed}/{stats.total} items
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="flex h-[calc(100vh-64px)]">
-        {/* Sidebar */}
-        <div className="w-80 border-r bg-muted/30 flex flex-col">
-          <div className="p-4 border-b">
-            <Button onClick={createNewChecklist} className="w-full gap-2" variant="default">
-              <Plus className="h-4 w-4" />
-              New Checklist
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {checklists.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                No checklists yet
-              </div>
-            ) : (
-              <>
-                {/* Original Checklists */}
-                {checklists.filter(c => !c.isDuplicate).length > 0 && (
-                  <div className="space-y-1">
-                    <div className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider">
-                      Checklists
-                    </div>
-                    {checklists.filter(c => !c.isDuplicate).map((checklist) => {
-                      const stats = countItems(checklist.items);
-                      const isSelected = selectedChecklist?.id === checklist.id;
-
-                      return (
-                        <button
-                          key={checklist.id}
-                          onClick={() => setSelectedChecklist(checklist)}
-                          className={cn(
-                            "w-full text-left p-3 rounded-lg transition-all",
-                            isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:bg-muted"
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <ListChecks className="h-4 w-4 shrink-0" />
-                            <span className="font-medium truncate">{checklist.title}</span>
-                          </div>
-                          <div className={cn(
-                            "text-xs mt-1",
-                            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
-                          )}>
-                            {stats.completed}/{stats.total} items
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Duplicated Checklists */}
-                {checklists.filter(c => c.isDuplicate).length > 0 && (
-                  <div className="space-y-1 mt-4">
-                    <div className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider flex items-center gap-2">
-                      <Copy className="h-3 w-3" />
-                      Duplicated
-                    </div>
-                    {checklists.filter(c => c.isDuplicate).map((checklist) => {
-                      const stats = countItems(checklist.items);
-                      const isSelected = selectedChecklist?.id === checklist.id;
-
-                      return (
-                        <button
-                          key={checklist.id}
-                          onClick={() => setSelectedChecklist(checklist)}
-                          className={cn(
-                            "w-full text-left p-3 rounded-lg transition-all",
-                            isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:bg-muted/70"
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <ListChecks className="h-4 w-4 shrink-0" />
-                            <span className="font-medium truncate">{checklist.title}</span>
-                          </div>
-                          <div className={cn(
-                            "text-xs mt-1",
-                            isSelected ? "text-primary-foreground/70" : "text-muted-foreground"
-                          )}>
-                            {stats.completed}/{stats.total} items
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+        {/* Desktop Sidebar */}
+        <div className="hidden md:flex w-80 border-r bg-muted/30 flex-col">
+          <SidebarContent />
         </div>
+
+        {/* Mobile Sidebar Sheet */}
+        <Sheet open={isMobileSidebarOpen} onOpenChange={setIsMobileSidebarOpen}>
+          <SheetContent side="left" className="w-80 p-0 flex flex-col">
+            <SheetHeader className="p-4 border-b">
+              <SheetTitle className="flex items-center gap-2">
+                <ListChecks className="h-5 w-5" />
+                My Checklists
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <SidebarContent onSelectChecklist={() => setIsMobileSidebarOpen(false)} />
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {selectedChecklist ? (
             <>
               {/* Header */}
-              <div className="p-6 border-b space-y-4">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    {isEditingTitle ? (
-                      <Input
-                        value={editedTitle}
-                        onChange={(e) => setEditedTitle(e.target.value)}
-                        onBlur={handleTitleSave}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleTitleSave();
-                          if (e.key === "Escape") setIsEditingTitle(false);
-                        }}
-                        className="text-2xl font-bold h-auto py-1 px-2"
-                        autoFocus
-                      />
-                    ) : (
-                      <h1
-                        className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors inline-flex items-center gap-2"
-                        onClick={() => {
-                          setIsEditingTitle(true);
-                          setEditedTitle(selectedChecklist.title);
-                        }}
-                      >
-                        {selectedChecklist.title}
-                        <Edit2 className="h-4 w-4 opacity-50" />
-                      </h1>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      Created {new Date(selectedChecklist.createdAt).toLocaleDateString()}
-                    </p>
+              <div className="p-4 md:p-6 border-b space-y-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    {/* Mobile menu button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="md:hidden shrink-0"
+                      onClick={() => setIsMobileSidebarOpen(true)}
+                    >
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                    
+                    <div className="space-y-1 flex-1 min-w-0">
+                      {isEditingTitle ? (
+                        <Input
+                          value={editedTitle}
+                          onChange={(e) => setEditedTitle(e.target.value)}
+                          onBlur={handleTitleSave}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleTitleSave();
+                            if (e.key === "Escape") setIsEditingTitle(false);
+                          }}
+                          className="text-xl md:text-2xl font-bold h-auto py-1 px-2"
+                          autoFocus
+                        />
+                      ) : (
+                        <h1
+                          className="text-xl md:text-2xl font-bold cursor-pointer hover:text-primary transition-colors inline-flex items-center gap-2 truncate"
+                          onClick={() => {
+                            setIsEditingTitle(true);
+                            setEditedTitle(selectedChecklist.title);
+                          }}
+                        >
+                          <span className="truncate">{selectedChecklist.title}</span>
+                          <Edit2 className="h-4 w-4 opacity-50 shrink-0" />
+                        </h1>
+                      )}
+                      <p className="text-xs md:text-sm text-muted-foreground">
+                        Created {new Date(selectedChecklist.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  {/* Desktop action buttons */}
+                  <div className="hidden sm:flex items-center gap-2 shrink-0">
                     <Button variant="outline" size="sm" onClick={handleOpenDuplicateDialog} className="gap-1.5">
                       <Copy className="h-4 w-4" />
                       Duplicate
@@ -775,6 +820,19 @@ const Checklists = () => {
                     <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)} className="gap-1.5">
                       <Trash2 className="h-4 w-4" />
                       Delete
+                    </Button>
+                  </div>
+
+                  {/* Mobile action buttons - icons only */}
+                  <div className="flex sm:hidden items-center gap-1 shrink-0">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleOpenDuplicateDialog}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowResetConfirm(true)}>
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                    <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => setShowDeleteConfirm(true)}>
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -797,7 +855,7 @@ const Checklists = () => {
               </div>
 
               {/* Items */}
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6">
                 {/* Add new item */}
                 <div className="flex items-center gap-2 mb-4">
                   <Input
@@ -809,9 +867,9 @@ const Checklists = () => {
                       if (e.key === "Enter") handleAddItem();
                     }}
                   />
-                  <Button onClick={handleAddItem} disabled={!newItemText.trim()}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
+                  <Button onClick={handleAddItem} disabled={!newItemText.trim()} size="sm" className="md:size-default">
+                    <Plus className="h-4 w-4 md:mr-1" />
+                    <span className="hidden md:inline">Add</span>
                   </Button>
                 </div>
 
@@ -842,10 +900,19 @@ const Checklists = () => {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4">
+              {/* Mobile menu button for empty state */}
+              <Button
+                variant="outline"
+                className="md:hidden mb-4"
+                onClick={() => setIsMobileSidebarOpen(true)}
+              >
+                <Menu className="h-4 w-4 mr-2" />
+                View Checklists
+              </Button>
               <div className="text-center">
-                <ListChecks className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">Select a checklist or create a new one</p>
+                <ListChecks className="h-12 md:h-16 w-12 md:w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-base md:text-lg">Select a checklist or create a new one</p>
               </div>
             </div>
           )}
