@@ -250,6 +250,55 @@ const Checklists = () => {
   const [editedTitle, setEditedTitle] = useState("");
   const [newItemText, setNewItemText] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
+
+  // Navigate to previous/next checklist
+  const navigateChecklist = (direction: 'prev' | 'next') => {
+    if (!selectedChecklist || checklists.length <= 1) return;
+    
+    const currentIndex = checklists.findIndex(c => c.id === selectedChecklist.id);
+    if (currentIndex === -1) return;
+    
+    let newIndex: number;
+    if (direction === 'prev') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : checklists.length - 1;
+    } else {
+      newIndex = currentIndex < checklists.length - 1 ? currentIndex + 1 : 0;
+    }
+    
+    setSelectedChecklist(checklists[newIndex]);
+  };
+
+  // Touch handlers for swipe
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      navigateChecklist('next');
+    } else if (isRightSwipe) {
+      navigateChecklist('prev');
+    }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
 
   const {
     isVerificationRequired,
@@ -758,8 +807,13 @@ const Checklists = () => {
           </SheetContent>
         </Sheet>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Main Content - with swipe gesture support on mobile */}
+        <div 
+          className="flex-1 flex flex-col overflow-hidden"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           {selectedChecklist ? (
             <>
               {/* Header */}
@@ -801,8 +855,14 @@ const Checklists = () => {
                           <Edit2 className="h-4 w-4 opacity-50 shrink-0" />
                         </h1>
                       )}
-                      <p className="text-xs md:text-sm text-muted-foreground">
-                        Created {new Date(selectedChecklist.createdAt).toLocaleDateString()}
+                      <p className="text-xs md:text-sm text-muted-foreground flex items-center gap-2">
+                        <span>Created {new Date(selectedChecklist.createdAt).toLocaleDateString()}</span>
+                        {/* Mobile swipe indicator */}
+                        {checklists.length > 1 && (
+                          <span className="md:hidden text-xs text-muted-foreground/70">
+                            • {checklists.findIndex(c => c.id === selectedChecklist.id) + 1}/{checklists.length}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -897,6 +957,13 @@ const Checklists = () => {
                     ))
                   )}
                 </div>
+                
+                {/* Mobile swipe hint */}
+                {checklists.length > 1 && (
+                  <div className="md:hidden flex items-center justify-center gap-1.5 py-3 text-xs text-muted-foreground/60">
+                    <span>← Swipe to navigate →</span>
+                  </div>
+                )}
               </div>
             </>
           ) : (
