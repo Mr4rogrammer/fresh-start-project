@@ -20,6 +20,7 @@ export default {
       'xl': '1280px',
       '2xl': '1536px',
     },
+    extend: {
       fontFamily: {
         sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
