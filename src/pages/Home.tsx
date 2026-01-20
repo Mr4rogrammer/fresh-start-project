@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import confetti from "canvas-confetti";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { ref, push, remove, update } from "firebase/database";
@@ -118,12 +119,39 @@ const Home = () => {
   const handleCompleteChallenge = async (challengeId: string) => {
     if (!user) return;
 
+    const triggerConfetti = () => {
+      // Fire confetti from the left
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { x: 0.1, y: 0.6 },
+        colors: ['#10b981', '#34d399', '#6ee7b7', '#fbbf24', '#f59e0b']
+      });
+      // Fire confetti from the right
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { x: 0.9, y: 0.6 },
+        colors: ['#10b981', '#34d399', '#6ee7b7', '#fbbf24', '#f59e0b']
+      });
+      // Fire confetti from the center
+      setTimeout(() => {
+        confetti({
+          particleCount: 150,
+          spread: 100,
+          origin: { x: 0.5, y: 0.5 },
+          colors: ['#10b981', '#34d399', '#6ee7b7', '#fbbf24', '#f59e0b']
+        });
+      }, 200);
+    };
+
     const performComplete = async () => {
       try {
         const challengeRef = ref(db, `users/${user.uid}/challenges/${challengeId}`);
         await update(challengeRef, { status: "Completed" });
         updateLocalChallenges(challenges.filter((c) => c.id !== challengeId));
-        toast.success("Challenge marked as completed!");
+        triggerConfetti();
+        toast.success("🎉 Challenge completed successfully!");
       } catch (error) {
         toast.error("Failed to complete challenge");
       }
