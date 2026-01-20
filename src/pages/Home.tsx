@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Wallet,
   Target,
+  Trophy,
 } from "lucide-react";
 import {
   Collapsible,
@@ -55,6 +56,7 @@ const Home = () => {
   const [newChallengeName, setNewChallengeName] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
   const [isBreachedOpen, setIsBreachedOpen] = useState(false);
+  const [isCompletedOpen, setIsCompletedOpen] = useState(false);
 
   const {
     isVerificationRequired,
@@ -111,6 +113,23 @@ const Home = () => {
     };
 
     requireVerification(performAchive);
+  };
+
+  const handleCompleteChallenge = async (challengeId: string) => {
+    if (!user) return;
+
+    const performComplete = async () => {
+      try {
+        const challengeRef = ref(db, `users/${user.uid}/challenges/${challengeId}`);
+        await update(challengeRef, { status: "Completed" });
+        updateLocalChallenges(challenges.filter((c) => c.id !== challengeId));
+        toast.success("Challenge marked as completed!");
+      } catch (error) {
+        toast.error("Failed to complete challenge");
+      }
+    };
+
+    requireVerification(performComplete);
   };
 
   const handleDeleteChallenge = async (challengeId: string) => {
@@ -171,8 +190,9 @@ const Home = () => {
 
   if (!user) return null;
 
-  const activeChallenges = challenges.filter(c => c.status !== "Achive");
+  const activeChallenges = challenges.filter(c => c.status !== "Achive" && c.status !== "Completed");
   const archivedChallenges = challenges.filter(c => c.status === "Achive");
+  const completedChallenges = challenges.filter(c => c.status === "Completed");
 
   return (
     <div className="min-h-screen bg-gradient-mesh">
@@ -313,8 +333,18 @@ const Home = () => {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleCompleteChallenge(challenge.id); }}
+                          className="h-8 px-2 text-muted-foreground hover:text-profit"
+                          title="Mark as Completed"
+                        >
+                          <Trophy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={(e) => { e.stopPropagation(); handleAchiveChallenge(challenge.id); }}
                           className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                          title="Mark as Breached"
                         >
                           <Archive className="h-3.5 w-3.5" />
                         </Button>
@@ -323,6 +353,7 @@ const Home = () => {
                           size="sm"
                           onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(challenge.id); }}
                           className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                          title="Delete"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -400,6 +431,105 @@ const Home = () => {
                           </div>
                         </div>
                         <div className="pt-3 border-t border-border/20 flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(challenge.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(challenge.id); }}
+                            className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Successfully Completed Challenges */}
+        {completedChallenges.length > 0 && (
+          <Collapsible open={isCompletedOpen} onOpenChange={setIsCompletedOpen} className="mt-12">
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center gap-3 mb-6 group cursor-pointer">
+                <div className="h-px flex-1 bg-profit/30" />
+                <span className="flex items-center gap-2 text-sm font-medium text-profit/80 group-hover:text-profit transition-colors">
+                  <Trophy className="h-4 w-4" />
+                  Successfully Completed
+                  <span className="text-xs bg-profit/20 text-profit px-2 py-0.5 rounded-full">
+                    {completedChallenges.length}
+                  </span>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    isCompletedOpen && "rotate-180"
+                  )} />
+                </span>
+                <div className="h-px flex-1 bg-profit/30" />
+              </button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {completedChallenges.map((challenge, index) => {
+                  const profitLoss = (challenge.currentBalance || challenge.openingBalance) - challenge.openingBalance - challenge.totalFees;
+                  const profitLossPercent = ((profitLoss / challenge.openingBalance) * 100).toFixed(2);
+                  const isProfit = profitLoss >= 0;
+
+                  return (
+                    <Card
+                      key={challenge.id}
+                      onClick={() => handleSelectChallenge(challenge)}
+                      className="card-interactive border-profit/20 hover:border-profit/40"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <div className="h-1 bg-gradient-to-r from-profit to-profit/50" />
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-start justify-between">
+                          <span className="text-lg font-semibold text-foreground truncate pr-2">
+                            {challenge.name}
+                          </span>
+                          <span className="text-xs bg-profit/20 text-profit px-2 py-1 rounded-full flex-shrink-0 flex items-center gap-1">
+                            <Trophy className="h-3 w-3" />
+                            Completed
+                          </span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1 p-3 rounded-xl bg-muted/50 border border-border/30">
+                            <div className="text-xs text-muted-foreground font-medium">Opening</div>
+                            <div className="text-base font-bold font-mono">
+                              ${challenge.openingBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div className="space-y-1 p-3 rounded-xl bg-profit/10 border border-profit/20">
+                            <div className="text-xs text-muted-foreground font-medium">Final</div>
+                            <div className="text-base font-bold font-mono text-profit">
+                              ${((challenge.currentBalance || challenge.openingBalance) - challenge.totalFees).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Performance Badge */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-profit/10 border border-profit/20">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-profit" />
+                            <span className="text-xs font-medium text-muted-foreground">Total Gain</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold font-mono text-profit">
+                              +{profitLossPercent}%
+                            </div>
+                            <div className="text-xs font-medium font-mono text-profit/70">
+                              +${Math.abs(profitLoss).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="pt-3 border-t border-border/30 flex items-center justify-between">
                           <span className="text-xs text-muted-foreground">
                             {new Date(challenge.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                           </span>
