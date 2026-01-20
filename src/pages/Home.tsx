@@ -366,92 +366,6 @@ const Home = () => {
           )}
         </div>
 
-        {/* Archived Challenges */}
-        {archivedChallenges.length > 0 && (
-          <Collapsible open={isBreachedOpen} onOpenChange={setIsBreachedOpen} className="mt-12">
-            <CollapsibleTrigger asChild>
-              <button className="w-full flex items-center gap-3 mb-6 group cursor-pointer">
-                <div className="h-px flex-1 bg-border/30" />
-                <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
-                  <Archive className="h-4 w-4" />
-                  Breached Accounts
-                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-                    {archivedChallenges.length}
-                  </span>
-                  <ChevronDown className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    isBreachedOpen && "rotate-180"
-                  )} />
-                </span>
-                <div className="h-px flex-1 bg-border/30" />
-              </button>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {archivedChallenges.map((challenge, index) => {
-                  const profitLoss = (challenge.currentBalance || challenge.openingBalance) - challenge.openingBalance - challenge.totalFees;
-                  const profitLossPercent = ((profitLoss / challenge.openingBalance) * 100).toFixed(2);
-                  const isProfit = profitLoss >= 0;
-
-                  return (
-                    <Card
-                      key={challenge.id}
-                      onClick={() => handleSelectChallenge(challenge)}
-                      className="card-interactive opacity-60 hover:opacity-80"
-                      style={{ animationDelay: `${index * 0.05}s` }}
-                    >
-                      <div className="h-1 bg-muted" />
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-start justify-between">
-                          <span className="text-lg font-semibold text-muted-foreground truncate pr-2">
-                            {challenge.name}
-                          </span>
-                          <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground flex-shrink-0">
-                            Archived
-                          </span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1 p-3 rounded-xl bg-muted/30 border border-border/20">
-                            <div className="text-xs text-muted-foreground font-medium">Opening</div>
-                            <div className="text-base font-bold font-mono text-muted-foreground">
-                              ${challenge.openingBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                            </div>
-                          </div>
-                          <div className="space-y-1 p-3 rounded-xl bg-muted/30 border border-border/20">
-                            <div className="text-xs text-muted-foreground font-medium">Final</div>
-                            <div className={cn(
-                              "text-base font-bold font-mono",
-                              isProfit ? "text-profit/60" : "text-loss/60"
-                            )}>
-                              ${((challenge.currentBalance || challenge.openingBalance) - challenge.totalFees).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="pt-3 border-t border-border/20 flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(challenge.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(challenge.id); }}
-                            className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
         {/* Successfully Completed Challenges */}
         {completedChallenges.length > 0 && (
           <Collapsible open={isCompletedOpen} onOpenChange={setIsCompletedOpen} className="mt-12">
@@ -530,6 +444,92 @@ const Home = () => {
                           </div>
                         </div>
                         <div className="pt-3 border-t border-border/30 flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(challenge.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(challenge.id); }}
+                            className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* Archived Challenges */}
+        {archivedChallenges.length > 0 && (
+          <Collapsible open={isBreachedOpen} onOpenChange={setIsBreachedOpen} className="mt-12">
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center gap-3 mb-6 group cursor-pointer">
+                <div className="h-px flex-1 bg-border/30" />
+                <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                  <Archive className="h-4 w-4" />
+                  Breached Accounts
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                    {archivedChallenges.length}
+                  </span>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    isBreachedOpen && "rotate-180"
+                  )} />
+                </span>
+                <div className="h-px flex-1 bg-border/30" />
+              </button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {archivedChallenges.map((challenge, index) => {
+                  const profitLoss = (challenge.currentBalance || challenge.openingBalance) - challenge.openingBalance - challenge.totalFees;
+                  const profitLossPercent = ((profitLoss / challenge.openingBalance) * 100).toFixed(2);
+                  const isProfit = profitLoss >= 0;
+
+                  return (
+                    <Card
+                      key={challenge.id}
+                      onClick={() => handleSelectChallenge(challenge)}
+                      className="card-interactive opacity-60 hover:opacity-80"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <div className="h-1 bg-muted" />
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-start justify-between">
+                          <span className="text-lg font-semibold text-muted-foreground truncate pr-2">
+                            {challenge.name}
+                          </span>
+                          <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground flex-shrink-0">
+                            Archived
+                          </span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1 p-3 rounded-xl bg-muted/30 border border-border/20">
+                            <div className="text-xs text-muted-foreground font-medium">Opening</div>
+                            <div className="text-base font-bold font-mono text-muted-foreground">
+                              ${challenge.openingBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div className="space-y-1 p-3 rounded-xl bg-muted/30 border border-border/20">
+                            <div className="text-xs text-muted-foreground font-medium">Final</div>
+                            <div className={cn(
+                              "text-base font-bold font-mono",
+                              isProfit ? "text-profit/60" : "text-loss/60"
+                            )}>
+                              ${((challenge.currentBalance || challenge.openingBalance) - challenge.totalFees).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="pt-3 border-t border-border/20 flex items-center justify-between">
                           <span className="text-xs text-muted-foreground">
                             {new Date(challenge.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                           </span>
