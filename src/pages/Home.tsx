@@ -22,6 +22,7 @@ import {
   Wallet,
   Target,
   Trophy,
+  Zap,
 } from "lucide-react";
 import {
   Collapsible,
@@ -245,6 +246,45 @@ const Home = () => {
             <Plus className="h-5 w-5" />
             New Challenge
           </Button>
+        </div>
+
+        {/* Challenge Stats Summary */}
+        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <Card className="bg-card/60 border-border/40 hover:border-primary/30 transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                <Zap className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{activeChallenges.length}</p>
+                <p className="text-xs text-muted-foreground font-medium">Active</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-card/60 border-border/40 hover:border-profit/30 transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-profit/10 border border-profit/20">
+                <Trophy className="h-5 w-5 text-profit" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-profit">{completedChallenges.length}</p>
+                <p className="text-xs text-muted-foreground font-medium">Completed</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-card/60 border-border/40 hover:border-loss/30 transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-loss/10 border border-loss/20">
+                <Archive className="h-5 w-5 text-loss" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-loss">{archivedChallenges.length}</p>
+                <p className="text-xs text-muted-foreground font-medium">Breached</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Active Challenges Grid */}
