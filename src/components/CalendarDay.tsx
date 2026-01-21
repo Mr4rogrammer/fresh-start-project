@@ -35,7 +35,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false }: Ca
         "group relative w-full h-full min-h-0 rounded-xl sm:rounded-2xl p-1.5 sm:p-3 md:p-4 transition-all duration-300",
         "flex flex-col items-center justify-center gap-0.5 sm:gap-1",
         "cursor-pointer active:scale-[0.97]",
-        isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background",
+        isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background animate-pulse-glow",
         isProfit && "calendar-day-profit",
         isLoss && "calendar-day-loss",
         !hasData && "bg-card/40 border border-border/30 hover:bg-card/60 hover:border-border/50"
