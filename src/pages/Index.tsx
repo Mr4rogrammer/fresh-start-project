@@ -176,6 +176,8 @@ const Index = () => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
     const days = [];
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
 
     for (let i = 0; i < firstDay; i++) {
       days.push(<CalendarDay key={`empty-${i}`} dayData={null} dayNumber={null} onClick={() => {}} />);
@@ -183,7 +185,8 @@ const Index = () => {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dayData = getDayData(day);
-      days.push(<CalendarDay key={day} dayData={dayData} dayNumber={day} onClick={() => handleDayClick(day)} />);
+      const isToday = isCurrentMonth && day === today.getDate();
+      days.push(<CalendarDay key={day} dayData={dayData} dayNumber={day} onClick={() => handleDayClick(day)} isToday={isToday} />);
     }
 
     return days;
