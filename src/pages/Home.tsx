@@ -23,7 +23,6 @@ import {
   Target,
   Trophy,
   Zap,
-  Percent,
 } from "lucide-react";
 import {
   Collapsible,
@@ -224,26 +223,6 @@ const Home = () => {
   const archivedChallenges = challenges.filter(c => c.status === "Achive");
   const completedChallenges = challenges.filter(c => c.status === "Completed");
 
-  // Calculate total P/L across all challenges
-  const totalProfitLoss = challenges.reduce((acc, challenge) => {
-    const pnl = (challenge.currentBalance || challenge.openingBalance) - challenge.openingBalance - (challenge.totalFees || 0);
-    return acc + pnl;
-  }, 0);
-
-  // Calculate success rate
-  const finishedChallenges = completedChallenges.length + archivedChallenges.length;
-  const successRate = finishedChallenges > 0 
-    ? Math.round((completedChallenges.length / finishedChallenges) * 100) 
-    : 0;
-
-  // Time-based greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
-  };
-
   return (
     <div className="min-h-screen bg-gradient-mesh">
       <Navbar />
@@ -252,7 +231,6 @@ const Home = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 animate-fade-in">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">{getGreeting()}, trader 👋</p>
             <h1 className="text-3xl md:text-4xl font-bold gradient-text mb-2">
               My Challenges
             </h1>
@@ -271,95 +249,39 @@ const Home = () => {
         </div>
 
         {/* Challenge Stats Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <Card className="bg-card/60 border-border/40 hover:border-primary/30 transition-colors">
-            <CardContent className="p-3 md:p-4 flex items-center gap-3">
-              <div className="p-2 md:p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-                <Zap className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                <Zap className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xl md:text-2xl font-bold text-foreground">{activeChallenges.length}</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Active</p>
+                <p className="text-2xl font-bold text-foreground">{activeChallenges.length}</p>
+                <p className="text-xs text-muted-foreground font-medium">Active</p>
               </div>
             </CardContent>
           </Card>
           
           <Card className="bg-card/60 border-border/40 hover:border-profit/30 transition-colors">
-            <CardContent className="p-3 md:p-4 flex items-center gap-3">
-              <div className="p-2 md:p-2.5 rounded-xl bg-profit/10 border border-profit/20">
-                <Trophy className="h-4 w-4 md:h-5 md:w-5 text-profit" />
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-profit/10 border border-profit/20">
+                <Trophy className="h-5 w-5 text-profit" />
               </div>
               <div>
-                <p className="text-xl md:text-2xl font-bold text-profit">{completedChallenges.length}</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Completed</p>
+                <p className="text-2xl font-bold text-profit">{completedChallenges.length}</p>
+                <p className="text-xs text-muted-foreground font-medium">Completed</p>
               </div>
             </CardContent>
           </Card>
           
           <Card className="bg-card/60 border-border/40 hover:border-loss/30 transition-colors">
-            <CardContent className="p-3 md:p-4 flex items-center gap-3">
-              <div className="p-2 md:p-2.5 rounded-xl bg-loss/10 border border-loss/20">
-                <Archive className="h-4 w-4 md:h-5 md:w-5 text-loss" />
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-loss/10 border border-loss/20">
+                <Archive className="h-5 w-5 text-loss" />
               </div>
               <div>
-                <p className="text-xl md:text-2xl font-bold text-loss">{archivedChallenges.length}</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Breached</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={cn(
-            "bg-card/60 border-border/40 transition-colors",
-            totalProfitLoss >= 0 ? "hover:border-profit/30" : "hover:border-loss/30"
-          )}>
-            <CardContent className="p-3 md:p-4 flex items-center gap-3">
-              <div className={cn(
-                "p-2 md:p-2.5 rounded-xl border",
-                totalProfitLoss >= 0 
-                  ? "bg-profit/10 border-profit/20" 
-                  : "bg-loss/10 border-loss/20"
-              )}>
-                <DollarSign className={cn(
-                  "h-4 w-4 md:h-5 md:w-5",
-                  totalProfitLoss >= 0 ? "text-profit" : "text-loss"
-                )} />
-              </div>
-              <div>
-                <p className={cn(
-                  "text-lg md:text-xl font-bold font-mono",
-                  totalProfitLoss >= 0 ? "text-profit" : "text-loss"
-                )}>
-                  {totalProfitLoss >= 0 ? "+" : ""}${Math.abs(totalProfitLoss).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-                <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Total P/L</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={cn(
-            "bg-card/60 border-border/40 transition-colors col-span-2 md:col-span-1",
-            successRate >= 50 ? "hover:border-profit/30" : "hover:border-loss/30"
-          )}>
-            <CardContent className="p-3 md:p-4 flex items-center gap-3">
-              <div className={cn(
-                "p-2 md:p-2.5 rounded-xl border",
-                successRate >= 50 
-                  ? "bg-profit/10 border-profit/20" 
-                  : "bg-loss/10 border-loss/20"
-              )}>
-                <Percent className={cn(
-                  "h-4 w-4 md:h-5 md:w-5",
-                  successRate >= 50 ? "text-profit" : "text-loss"
-                )} />
-              </div>
-              <div>
-                <p className={cn(
-                  "text-xl md:text-2xl font-bold",
-                  successRate >= 50 ? "text-profit" : "text-loss"
-                )}>
-                  {successRate}%
-                </p>
-                <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Success Rate</p>
+                <p className="text-2xl font-bold text-loss">{archivedChallenges.length}</p>
+                <p className="text-xs text-muted-foreground font-medium">Breached</p>
               </div>
             </CardContent>
           </Card>
