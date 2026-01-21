@@ -361,6 +361,10 @@
     animation: shimmer 2.5s ease-in-out infinite;
   }
 
+  .animate-border-shimmer {
+    animation: borderShimmer 2s ease-in-out infinite;
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -436,6 +440,17 @@
 
     100% {
       background-position: 200% 0;
+    }
+  }
+
+  @keyframes borderShimmer {
+    0%, 100% {
+      box-shadow: 0 0 8px 2px hsl(var(--primary) / 0.3),
+                  inset 0 0 4px 1px hsl(var(--primary) / 0.1);
+    }
+    50% {
+      box-shadow: 0 0 16px 4px hsl(var(--primary) / 0.5),
+                  inset 0 0 8px 2px hsl(var(--primary) / 0.2);
     }
   }
 
