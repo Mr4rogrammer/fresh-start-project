@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { ArrowRightLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -10,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TimeWheelPicker } from "@/components/TimeWheelPicker";
 
 interface TimezoneOption {
   value: string;
@@ -87,21 +87,15 @@ export const TimeConverter = () => {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Input Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           <div className="space-y-2">
-            <Label htmlFor="time-input">Select Time</Label>
-            <Input
-              id="time-input"
-              type="time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="text-lg font-mono"
-            />
+            <Label className="text-center block">Select Time</Label>
+            <TimeWheelPicker value={selectedTime} onChange={setSelectedTime} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="timezone-select">Source Timezone</Label>
             <Select value={sourceTimezone} onValueChange={setSourceTimezone}>
-              <SelectTrigger id="timezone-select">
+              <SelectTrigger id="timezone-select" className="h-12">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border z-50">
