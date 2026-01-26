@@ -10,7 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { WorldClocks } from "@/components/WorldClocks";
+
 
 import {
   Plus,
@@ -24,6 +24,7 @@ import {
   Target,
   Trophy,
   Zap,
+  Clock,
 } from "lucide-react";
 import {
   Collapsible,
@@ -239,14 +240,25 @@ const Home = () => {
               Track your trading journey and performance
             </p>
           </div>
-          <Button
-            onClick={() => setIsDialogOpen(true)}
-            size="lg"
-            className="gap-2 shadow-lg hover:shadow-glow-primary"
-          >
-            <Plus className="h-5 w-5" />
-            New Challenge
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => navigate("/world-clock")}
+              className="gap-2"
+            >
+              <Clock className="h-5 w-5" />
+              <span className="hidden sm:inline">World Clock</span>
+            </Button>
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              size="lg"
+              className="gap-2 shadow-lg hover:shadow-glow-primary"
+            >
+              <Plus className="h-5 w-5" />
+              New Challenge
+            </Button>
+          </div>
         </div>
 
         {/* Challenge Stats Summary */}
@@ -286,11 +298,6 @@ const Home = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* World Clocks Section */}
-        <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.15s' }}>
-          <WorldClocks />
         </div>
 
         {/* Active Challenges Grid */}

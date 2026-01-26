@@ -15,6 +15,7 @@ import Notes from "./pages/Notes";
 import Links from "./pages/Links";
 import Checklists from "./pages/Checklists";
 import Profile from "./pages/Profile";
+import WorldClock from "./pages/WorldClock";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
                 <Route path="/checklists" element={<Checklists />} />
                 <Route path="/links" element={<Links />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/world-clock" element={<WorldClock />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
