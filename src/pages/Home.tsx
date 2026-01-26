@@ -10,6 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { WorldClocks } from "@/components/WorldClocks";
 
 import {
   Plus,
@@ -285,6 +286,11 @@ const Home = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* World Clocks Section */}
+        <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.15s' }}>
+          <WorldClocks />
         </div>
 
         {/* Active Challenges Grid */}
