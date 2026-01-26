@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { WorldClocks } from "@/components/WorldClocks";
+import { TimeConverter } from "@/components/TimeConverter";
 
 const WorldClock = () => {
   const { user, loading } = useAuth();
@@ -33,6 +34,7 @@ const WorldClock = () => {
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
         <div className="animate-fade-in">
           <WorldClocks />
+          <TimeConverter />
         </div>
       </div>
     </div>
