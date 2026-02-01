@@ -72,18 +72,18 @@ const WheelColumn = ({ items, value, onChange, formatValue }: WheelColumnProps) 
   };
 
   return (
-    <div className="relative h-[200px] w-16 overflow-hidden">
-      {/* Gradient overlays */}
-      <div className="absolute top-0 left-0 right-0 h-20 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none" />
+    <div className="relative h-[200px] w-20 overflow-hidden rounded-xl">
+      {/* Gradient overlays - stronger fade */}
+      <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-card via-card/80 to-transparent z-10 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-card via-card/80 to-transparent z-10 pointer-events-none" />
       
-      {/* Selection highlight */}
-      <div className="absolute top-1/2 left-0 right-0 h-10 -translate-y-1/2 bg-primary/10 border-y border-primary/30 z-0" />
+      {/* Selection highlight - glass effect */}
+      <div className="absolute top-1/2 left-1 right-1 h-12 -translate-y-1/2 rounded-lg bg-primary/20 border border-primary/40 shadow-[0_0_20px_-5px_hsl(var(--primary)/0.4)] z-0" />
       
       {/* Scrollable column */}
       <div
         ref={containerRef}
-        className="h-full overflow-y-auto scrollbar-none scroll-smooth"
+        className="h-full overflow-y-auto scrollbar-none"
         onScroll={handleScroll}
         style={{ 
           paddingTop: `${ITEM_HEIGHT * 2}px`, 
@@ -93,18 +93,25 @@ const WheelColumn = ({ items, value, onChange, formatValue }: WheelColumnProps) 
       >
         {items.map((item, index) => {
           const isSelected = item === value;
+          const distance = Math.abs(index - selectedIndex);
+          const opacity = distance === 0 ? 1 : distance === 1 ? 0.5 : 0.25;
+          const scale = distance === 0 ? 1.15 : distance === 1 ? 0.95 : 0.85;
+          
           return (
             <div
               key={`${item}-${index}`}
               onClick={() => handleItemClick(index)}
               className={cn(
-                "h-10 flex items-center justify-center cursor-pointer transition-all font-mono text-lg",
-                "scroll-snap-align-center",
+                "h-10 flex items-center justify-center cursor-pointer transition-all duration-200 font-mono text-xl",
                 isSelected
-                  ? "text-primary font-bold scale-110"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-primary font-bold"
+                  : "text-muted-foreground/60 hover:text-muted-foreground"
               )}
-              style={{ scrollSnapAlign: "center" }}
+              style={{ 
+                scrollSnapAlign: "center",
+                transform: `scale(${scale})`,
+                opacity: isScrolling ? undefined : opacity,
+              }}
             >
               {formatValue ? formatValue(item) : item}
             </div>
@@ -149,7 +156,7 @@ export const TimeWheelPicker = ({ value, onChange }: TimeWheelPickerProps) => {
   };
 
   return (
-    <div className="flex items-center justify-center gap-1 p-4 rounded-2xl bg-muted/30 border border-border/50">
+    <div className="flex items-center justify-center gap-2 p-6 rounded-2xl bg-card border border-border/50 shadow-elegant">
       <WheelColumn
         items={hours12}
         value={hours12Value}
@@ -157,7 +164,10 @@ export const TimeWheelPicker = ({ value, onChange }: TimeWheelPickerProps) => {
         formatValue={(v) => String(v).padStart(2, "0")}
       />
       
-      <div className="text-2xl font-bold text-primary">:</div>
+      <div className="flex flex-col gap-2">
+        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+      </div>
       
       <WheelColumn
         items={minutes}
@@ -166,7 +176,7 @@ export const TimeWheelPicker = ({ value, onChange }: TimeWheelPickerProps) => {
         formatValue={(v) => String(v).padStart(2, "0")}
       />
       
-      <div className="w-2" />
+      <div className="w-4" />
       
       <WheelColumn
         items={periods}
