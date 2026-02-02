@@ -120,6 +120,14 @@ const TradeList = () => {
     setFilteredTrades(filtered);
   }, [trades, dateRange, directionFilter, profitFilter]);
 
+  // Calculate running totals for filtered trades
+  const tradesWithRunningTotal = filteredTrades.map((trade, index) => {
+    const runningTotal = filteredTrades
+      .slice(0, index + 1)
+      .reduce((sum, t) => sum + t.profit, 0);
+    return { ...trade, runningTotal };
+  });
+
   const clearFilters = () => {
     setDateRange(undefined);
     setDirectionFilter("all");
@@ -227,12 +235,12 @@ const TradeList = () => {
 
           {/* Mobile Trade Cards */}
           <div className="md:hidden space-y-3">
-            {filteredTrades.length === 0 ? (
+            {tradesWithRunningTotal.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground bg-card rounded-lg border">
                 No trades found
               </div>
             ) : (
-              filteredTrades.map((trade) => (
+              tradesWithRunningTotal.map((trade) => (
                 <div key={trade.id} className="bg-card rounded-lg border p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -247,17 +255,30 @@ const TradeList = () => {
                         {trade.direction}
                       </span>
                     </div>
-                    <span
-                      className={`font-bold text-sm ${
-                        trade.profit > 0
-                          ? "text-profit"
-                          : trade.profit < 0
-                            ? "text-loss"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      {trade.profit > 0 ? '+' : ''}${trade.profit.toFixed(2)}
-                    </span>
+                    <div className="flex flex-col items-end">
+                      <span
+                        className={`font-bold text-sm ${
+                          trade.profit > 0
+                            ? "text-profit"
+                            : trade.profit < 0
+                              ? "text-loss"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        {trade.profit > 0 ? '+' : ''}${trade.profit.toFixed(2)}
+                      </span>
+                      <span
+                        className={`text-xs ${
+                          trade.runningTotal > 0
+                            ? "text-profit"
+                            : trade.runningTotal < 0
+                              ? "text-loss"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        Total: {trade.runningTotal > 0 ? '+' : ''}${trade.runningTotal.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                     <div>
@@ -311,20 +332,21 @@ const TradeList = () => {
                   <TableHead>Lot Size</TableHead>
                   <TableHead>Fees</TableHead>
                   <TableHead>Profit/Loss</TableHead>
+                  <TableHead>Running Total</TableHead>
                   <TableHead>Risk Reward</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead>Link</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTrades.length === 0 ? (
+                {tradesWithRunningTotal.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                       No trades found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTrades.map((trade) => (
+                  tradesWithRunningTotal.map((trade) => (
                     <TableRow key={trade.id} className="hover:bg-muted/50 transition-colors" >
                       <TableCell>{trade.date}</TableCell>
                       <TableCell className="font-medium">{trade.pair}</TableCell>
@@ -357,6 +379,18 @@ const TradeList = () => {
                         </span>
                       </TableCell>
 
+                      <TableCell>
+                        <span
+                          className={`font-semibold ${trade.runningTotal > 0
+                            ? "text-profit"
+                            : trade.runningTotal < 0
+                              ? "text-loss"
+                              : "text-muted-foreground"
+                            }`}
+                        >
+                          ${trade.runningTotal.toFixed(2)}
+                        </span>
+                      </TableCell>
 
                       <TableCell>{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</TableCell>
                       <TableCell className="max-w-xs truncate">{trade.notes || "-"}</TableCell>
