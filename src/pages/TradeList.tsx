@@ -120,10 +120,10 @@ const TradeList = () => {
     setFilteredTrades(filtered);
   }, [trades, dateRange, directionFilter, profitFilter]);
 
-  // Calculate running totals for filtered trades
+  // Calculate running totals from bottom (oldest) to top (newest)
   const tradesWithRunningTotal = filteredTrades.map((trade, index) => {
     const runningTotal = filteredTrades
-      .slice(0, index + 1)
+      .slice(index) // from current row to the end (bottom)
       .reduce((sum, t) => sum + t.profit, 0);
     return { ...trade, runningTotal };
   });
