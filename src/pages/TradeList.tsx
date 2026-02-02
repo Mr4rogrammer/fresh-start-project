@@ -316,11 +316,6 @@ const TradeList = () => {
                       <span className="text-foreground">{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</span>
                     </div>
                   </div>
-                  {trade.notes && (
-                    <p className="text-xs text-muted-foreground pt-1 border-t border-border/50 truncate">
-                      {trade.notes}
-                    </p>
-                  )}
                 </div>
               ))
             )}
@@ -342,14 +337,12 @@ const TradeList = () => {
                   <TableHead>Profit/Loss</TableHead>
                   <TableHead>Running Total</TableHead>
                   <TableHead>Risk Reward</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead>Link</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tradesWithRunningTotal.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No trades found
                     </TableCell>
                   </TableRow>
@@ -401,15 +394,6 @@ const TradeList = () => {
                       </TableCell>
 
                       <TableCell>{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</TableCell>
-                      <TableCell className="max-w-xs truncate">{trade.notes || "-"}</TableCell>
-                      <TableCell onClick={() => trade.link && trade.link.trim() !== "" && trade.link.includes("https") && window.open(trade.link, "_blank")}>
-                        <span
-                          className={`font-semibold cursor-pointer ${trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "text-profit" : "text-muted-foreground"}`}
-                        >
-                          {trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "Open" : "-"}
-
-                        </span>
-                      </TableCell>
                     </TableRow>
                   ))
                 )}
