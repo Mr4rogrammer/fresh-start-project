@@ -117,6 +117,14 @@ const TradeList = () => {
       filtered = filtered.filter((trade) => trade.profit === 0);
     }
 
+    // Sort by date (newest first), then by createdAt (newest first) for same-day trades
+    filtered.sort((a, b) => {
+      const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateCompare !== 0) return dateCompare;
+      // For same date, sort by createdAt
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     setFilteredTrades(filtered);
   }, [trades, dateRange, directionFilter, profitFilter]);
 
