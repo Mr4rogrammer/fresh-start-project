@@ -215,25 +215,34 @@ const Index = () => {
   if (!user) return null;
 
   return (
-    <div className="h-screen bg-gradient-mesh flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-mesh flex flex-col overflow-hidden relative">
+      {/* Ambient background effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px] opacity-50" />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-[120px] opacity-40" />
+      </div>
+      
       <Navbar />
 
-      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full p-2 sm:p-4 md:p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full p-2 sm:p-4 md:p-6 overflow-hidden relative z-10">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:gap-4 mb-3 sm:mb-6 animate-fade-in">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
               <div className="relative hidden sm:block">
-                <div className="absolute inset-0 bg-gradient-primary rounded-xl blur-lg opacity-30" />
-                <div className="relative bg-gradient-primary p-3 rounded-xl">
+                <div className="absolute inset-0 bg-gradient-primary rounded-xl blur-lg opacity-40" />
+                <div className="relative bg-gradient-primary p-3 rounded-xl shadow-glow-primary">
                   <Calendar className="h-6 w-6 text-primary-foreground" />
                 </div>
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold gradient-text">Calendar</h1>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold gradient-text-static">Calendar</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   {monthlyTrades.length} trades • 
-                  <span className={cn("font-semibold ml-1", isMonthlyProfit ? "text-profit" : "text-loss")}>
+                  <span className={cn(
+                    "font-semibold ml-1 transition-colors",
+                    isMonthlyProfit ? "text-profit" : "text-loss"
+                  )}>
                     {isMonthlyProfit ? "+" : ""}${Math.abs(monthlyProfit).toFixed(2)}
                   </span>
                 </p>
@@ -241,28 +250,28 @@ const Index = () => {
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2">
-              <Button variant="ghost" size="sm" onClick={goToToday} className="text-muted-foreground text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9">
+              <Button variant="ghost" size="sm" onClick={goToToday} className="text-muted-foreground text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9 hover:text-primary hover:bg-primary/10">
                 Today
               </Button>
             </div>
           </div>
 
           {/* Month Navigation - Separate row on mobile */}
-          <div className="flex items-center justify-center gap-1 bg-card/60 backdrop-blur-sm rounded-xl p-1 border border-border/50">
-            <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(-1)} className="h-8 w-8 sm:h-9 sm:w-9">
+          <div className="flex items-center justify-center gap-1 glass rounded-xl p-1.5 border border-border/40">
+            <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(-1)} className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-primary/10 hover:text-primary">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm sm:text-base font-semibold px-2 sm:px-3 min-w-[120px] sm:min-w-[160px] text-center">
+            <span className="text-sm sm:text-base font-semibold px-2 sm:px-4 min-w-[120px] sm:min-w-[180px] text-center gradient-text-static">
               {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
             </span>
-            <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(1)} className="h-8 w-8 sm:h-9 sm:w-9">
+            <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(1)} className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-primary/10 hover:text-primary">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {/* Calendar Grid */}
-        <div className="flex-1 flex flex-col min-h-0 animate-scale-in">
+        <div className="flex-1 flex flex-col min-h-0 animate-scale-in glass-subtle rounded-2xl p-2 sm:p-4 border border-border/30">
           {/* Day headers */}
           <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-3">
             {dayNames.map((day, index) => (
@@ -274,7 +283,7 @@ const Index = () => {
           </div>
 
           {/* Calendar days */}
-          <div className="grid grid-cols-7 gap-1 sm:gap-2 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
             {renderCalendar()}
           </div>
         </div>

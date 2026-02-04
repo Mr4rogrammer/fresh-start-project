@@ -281,7 +281,7 @@ const Dashboard = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-mesh relative overflow-hidden">
       <Navbar />
 
       {/* Hidden share card for image generation */}
@@ -352,8 +352,8 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="max-w-7xl mx-auto p-2 sm:p-4 md:p-8 animate-fade-in">
-        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-8 animate-slide-down">
+      <div className="max-w-7xl mx-auto p-2 sm:p-4 md:p-8 page-transition relative z-10">
+        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
             <div>
               <h1 className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Dashboard</h1>
@@ -386,7 +386,7 @@ const Dashboard = () => {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 p-3 sm:p-6 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 p-4 sm:p-6 glass-strong rounded-xl sm:rounded-2xl border border-border/40 shadow-xl hover:shadow-2xl transition-all duration-500">
             <div className="space-y-1 sm:space-y-2 col-span-2 md:col-span-1">
               <label className="text-xs sm:text-sm font-medium">Date Range</label>
               <Popover>
@@ -469,7 +469,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8 stagger-children">
           <div className="animate-scale-in" style={{ animationDelay: "0s" }}>
             <StatsCard
               title="Opening Balance"
@@ -543,8 +543,10 @@ const Dashboard = () => {
 
         {/* Profit Progression Chart */}
         {chartData.length > 0 && (
-          <div className="bg-card/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-6 border border-border/50 mb-4 sm:mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-fade-in">
-            <h3 className="text-base sm:text-xl font-semibold mb-3 sm:mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Balance Progression</h3>
+          <div className="glass-strong rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border/40 mb-4 sm:mb-8 shadow-xl hover:shadow-2xl transition-all duration-500 animate-fade-in relative overflow-hidden">
+            {/* Subtle gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+            <h3 className="text-base sm:text-xl font-semibold mb-3 sm:mb-6 gradient-text-static relative z-10">Balance Progression</h3>
             <ResponsiveContainer width="100%" height={250} className="sm:hidden">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
