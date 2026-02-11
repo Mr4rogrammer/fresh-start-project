@@ -35,44 +35,29 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false }: Ca
         "group relative w-full h-full min-h-0 rounded-xl sm:rounded-2xl p-1.5 sm:p-3 md:p-4 transition-all duration-300",
         "flex flex-col items-center justify-center gap-0.5 sm:gap-1",
         "cursor-pointer active:scale-[0.97]",
-        "overflow-hidden",
-        isToday && "ring-2 ring-primary ring-offset-2 ring-offset-background animate-border-shimmer",
+        isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background animate-border-shimmer",
         isProfit && "calendar-day-profit",
         isLoss && "calendar-day-loss",
-        !hasData && "bg-card/50 border border-border/30 hover:bg-card/70 hover:border-primary/30 hover:shadow-lg"
+        !hasData && "bg-card/40 border border-border/30 hover:bg-card/60 hover:border-border/50"
       )}
     >
-      {/* Shine effect on hover */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-      
-      {/* Inner glow effect */}
-      {hasData && (
-        <div className={cn(
-          "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-          isProfit && "bg-profit/5",
-          isLoss && "bg-loss/5"
-        )} />
-      )}
-
       <span className={cn(
-        "text-sm sm:text-xl md:text-2xl font-bold transition-all duration-300 relative z-10",
-        "group-hover:scale-110",
-        hasData ? "text-foreground" : "text-muted-foreground/60 group-hover:text-muted-foreground"
+        "text-sm sm:text-xl md:text-2xl font-bold transition-colors",
+        hasData ? "text-foreground" : "text-muted-foreground/60"
       )}>
         {dayNumber}
       </span>
 
       {hasData && (
         <>
-          <div className="flex items-center gap-0.5 sm:gap-1 relative z-10">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             {isProfit ? (
-              <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 text-profit transition-transform duration-300 group-hover:scale-110" />
+              <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 text-profit" />
             ) : isLoss ? (
-              <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 text-loss transition-transform duration-300 group-hover:scale-110" />
+              <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-4 md:w-4 text-loss" />
             ) : null}
             <span className={cn(
-              "text-[10px] sm:text-sm md:text-base font-bold font-mono transition-all duration-300",
-              "group-hover:scale-105",
+              "text-[10px] sm:text-sm md:text-base font-bold font-mono",
               isProfit && "text-profit",
               isLoss && "text-loss"
             )}>
@@ -80,7 +65,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false }: Ca
             </span>
           </div>
           
-          <span className="text-[8px] sm:text-xs text-muted-foreground font-medium hidden xs:block relative z-10">
+          <span className="text-[8px] sm:text-xs text-muted-foreground font-medium hidden xs:block">
             {dayData.tradeCount} {dayData.tradeCount === 1 ? 'trade' : 'trades'}
           </span>
         </>

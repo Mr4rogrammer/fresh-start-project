@@ -117,24 +117,8 @@ const TradeList = () => {
       filtered = filtered.filter((trade) => trade.profit === 0);
     }
 
-    // Sort by date (newest first), then by createdAt (newest first) for same-day trades
-    filtered.sort((a, b) => {
-      const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
-      if (dateCompare !== 0) return dateCompare;
-      // For same date, sort by createdAt
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
     setFilteredTrades(filtered);
   }, [trades, dateRange, directionFilter, profitFilter]);
-
-  // Calculate running totals from bottom (oldest) to top (newest)
-  const tradesWithRunningTotal = filteredTrades.map((trade, index) => {
-    const runningTotal = filteredTrades
-      .slice(index) // from current row to the end (bottom)
-      .reduce((sum, t) => sum + t.profit, 0);
-    return { ...trade, runningTotal };
-  });
 
   const clearFilters = () => {
     setDateRange(undefined);
@@ -243,12 +227,12 @@ const TradeList = () => {
 
           {/* Mobile Trade Cards */}
           <div className="md:hidden space-y-3">
-            {tradesWithRunningTotal.length === 0 ? (
+            {filteredTrades.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground bg-card rounded-lg border">
                 No trades found
               </div>
             ) : (
-              tradesWithRunningTotal.map((trade) => (
+              filteredTrades.map((trade) => (
                 <div key={trade.id} className="bg-card rounded-lg border p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -263,30 +247,17 @@ const TradeList = () => {
                         {trade.direction}
                       </span>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span
-                        className={`font-bold text-sm ${
-                          trade.profit > 0
-                            ? "text-profit"
-                            : trade.profit < 0
-                              ? "text-loss"
-                              : "text-muted-foreground"
-                        }`}
-                      >
-                        {trade.profit > 0 ? '+' : ''}${trade.profit.toFixed(2)}
-                      </span>
-                      <span
-                        className={`text-xs ${
-                          trade.runningTotal > 0
-                            ? "text-profit"
-                            : trade.runningTotal < 0
-                              ? "text-loss"
-                              : "text-muted-foreground"
-                        }`}
-                      >
-                        Total: {trade.runningTotal > 0 ? '+' : ''}${trade.runningTotal.toFixed(2)}
-                      </span>
-                    </div>
+                    <span
+                      className={`font-bold text-sm ${
+                        trade.profit > 0
+                          ? "text-profit"
+                          : trade.profit < 0
+                            ? "text-loss"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {trade.profit > 0 ? '+' : ''}${trade.profit.toFixed(2)}
+                    </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
                     <div>
@@ -316,6 +287,11 @@ const TradeList = () => {
                       <span className="text-foreground">{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</span>
                     </div>
                   </div>
+                  {trade.notes && (
+                    <p className="text-xs text-muted-foreground pt-1 border-t border-border/50 truncate">
+                      {trade.notes}
+                    </p>
+                  )}
                 </div>
               ))
             )}
@@ -335,19 +311,20 @@ const TradeList = () => {
                   <TableHead>Lot Size</TableHead>
                   <TableHead>Fees</TableHead>
                   <TableHead>Profit/Loss</TableHead>
-                  <TableHead>Running Total</TableHead>
                   <TableHead>Risk Reward</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead>Link</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tradesWithRunningTotal.length === 0 ? (
+                {filteredTrades.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                       No trades found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  tradesWithRunningTotal.map((trade) => (
+                  filteredTrades.map((trade) => (
                     <TableRow key={trade.id} className="hover:bg-muted/50 transition-colors" >
                       <TableCell>{trade.date}</TableCell>
                       <TableCell className="font-medium">{trade.pair}</TableCell>
@@ -380,20 +357,17 @@ const TradeList = () => {
                         </span>
                       </TableCell>
 
-                      <TableCell>
-                        <span
-                          className={`font-semibold ${trade.runningTotal > 0
-                            ? "text-profit"
-                            : trade.runningTotal < 0
-                              ? "text-loss"
-                              : "text-muted-foreground"
-                            }`}
-                        >
-                          ${trade.runningTotal.toFixed(2)}
-                        </span>
-                      </TableCell>
 
                       <TableCell>{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</TableCell>
+                      <TableCell className="max-w-xs truncate">{trade.notes || "-"}</TableCell>
+                      <TableCell onClick={() => trade.link && trade.link.trim() !== "" && trade.link.includes("https") && window.open(trade.link, "_blank")}>
+                        <span
+                          className={`font-semibold cursor-pointer ${trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "text-profit" : "text-muted-foreground"}`}
+                        >
+                          {trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "Open" : "-"}
+
+                        </span>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

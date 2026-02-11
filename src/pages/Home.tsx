@@ -262,42 +262,38 @@ const Home = () => {
         </div>
 
         {/* Challenge Stats Summary */}
-        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8 stagger-children">
-          <Card className="group bg-card/70 border-border/40 hover:border-primary/40 transition-all duration-300 hover:shadow-glow-primary">
-            <CardContent className="p-4 flex items-center gap-3 relative overflow-hidden">
-              {/* Background glow */}
-              <div className="absolute -top-8 -right-8 w-24 h-24 bg-primary/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative p-2.5 rounded-xl bg-primary/15 border border-primary/25 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300">
+        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          <Card className="bg-card/60 border-border/40 hover:border-primary/30 transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
                 <Zap className="h-5 w-5 text-primary" />
               </div>
-              <div className="relative">
-                <p className="text-2xl font-bold text-foreground group-hover:scale-105 transition-transform duration-300 origin-left">{activeChallenges.length}</p>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{activeChallenges.length}</p>
                 <p className="text-xs text-muted-foreground font-medium">Active</p>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="group bg-card/70 border-border/40 hover:border-profit/40 transition-all duration-300 hover:shadow-[0_0_30px_-10px_hsl(var(--profit)/0.4)]">
-            <CardContent className="p-4 flex items-center gap-3 relative overflow-hidden">
-              <div className="absolute -top-8 -right-8 w-24 h-24 bg-profit/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative p-2.5 rounded-xl bg-profit/15 border border-profit/25 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300">
+          <Card className="bg-card/60 border-border/40 hover:border-profit/30 transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-profit/10 border border-profit/20">
                 <Trophy className="h-5 w-5 text-profit" />
               </div>
-              <div className="relative">
-                <p className="text-2xl font-bold text-profit group-hover:scale-105 transition-transform duration-300 origin-left">{completedChallenges.length}</p>
+              <div>
+                <p className="text-2xl font-bold text-profit">{completedChallenges.length}</p>
                 <p className="text-xs text-muted-foreground font-medium">Completed</p>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="group bg-card/70 border-border/40 hover:border-loss/40 transition-all duration-300 hover:shadow-[0_0_30px_-10px_hsl(var(--loss)/0.4)]">
-            <CardContent className="p-4 flex items-center gap-3 relative overflow-hidden">
-              <div className="absolute -top-8 -right-8 w-24 h-24 bg-loss/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative p-2.5 rounded-xl bg-loss/15 border border-loss/25 group-hover:scale-110 group-hover:shadow-lg transition-all duration-300">
+          <Card className="bg-card/60 border-border/40 hover:border-loss/30 transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-loss/10 border border-loss/20">
                 <Archive className="h-5 w-5 text-loss" />
               </div>
-              <div className="relative">
-                <p className="text-2xl font-bold text-loss group-hover:scale-105 transition-transform duration-300 origin-left">{archivedChallenges.length}</p>
+              <div>
+                <p className="text-2xl font-bold text-loss">{archivedChallenges.length}</p>
                 <p className="text-xs text-muted-foreground font-medium">Breached</p>
               </div>
             </CardContent>
@@ -338,20 +334,17 @@ const Home = () => {
                   key={challenge.id}
                   onClick={() => handleSelectChallenge(challenge)}
                   className={cn(
-                    "card-interactive group overflow-hidden relative",
-                    "animate-scale-in bg-card/80 backdrop-blur-sm"
+                    "card-interactive group overflow-hidden",
+                    "animate-scale-in"
                   )}
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
                   {/* Top accent gradient */}
-                  <div className="h-1 bg-gradient-primary opacity-80 group-hover:opacity-100 transition-opacity" />
-                  
-                  {/* Shine effect on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 pointer-events-none" />
+                  <div className="h-1 bg-gradient-primary" />
 
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-start justify-between">
-                      <span className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors duration-300 truncate pr-2">
+                      <span className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors truncate pr-2">
                         {challenge.name}
                       </span>
                     </CardTitle>
@@ -360,7 +353,7 @@ const Home = () => {
                   <CardContent className="space-y-4">
                     {/* Balance Display */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1 p-3 rounded-xl bg-muted/40 border border-border/40 group-hover:bg-muted/60 transition-colors duration-300">
+                      <div className="space-y-1 p-3 rounded-xl bg-muted/50 border border-border/30">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
                           <Wallet className="h-3.5 w-3.5" />
                           Opening
@@ -369,13 +362,13 @@ const Home = () => {
                           ${challenge.openingBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </div>
                       </div>
-                      <div className="space-y-1 p-3 rounded-xl bg-muted/40 border border-border/40 group-hover:bg-muted/60 transition-colors duration-300">
+                      <div className="space-y-1 p-3 rounded-xl bg-muted/50 border border-border/30">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
                           <DollarSign className="h-3.5 w-3.5" />
                           Current
                         </div>
                         <div className={cn(
-                          "text-base font-bold font-mono transition-transform duration-300 group-hover:scale-105 origin-left",
+                          "text-base font-bold font-mono",
                           isProfit ? "text-profit" : "text-loss"
                         )}>
                           ${((challenge.currentBalance || challenge.openingBalance) - challenge.totalFees).toLocaleString("en-US", { minimumFractionDigits: 2 })}
@@ -385,21 +378,20 @@ const Home = () => {
 
                     {/* Performance Badge */}
                     <div className={cn(
-                      "flex items-center justify-between p-3 rounded-xl transition-all duration-300",
-                      "group-hover:shadow-lg",
-                      isProfit ? "bg-profit/10 border border-profit/25 group-hover:bg-profit/15" : "bg-loss/10 border border-loss/25 group-hover:bg-loss/15"
+                      "flex items-center justify-between p-3 rounded-xl",
+                      isProfit ? "bg-profit/10 border border-profit/20" : "bg-loss/10 border border-loss/20"
                     )}>
                       <div className="flex items-center gap-2">
                         {isProfit ? (
-                          <TrendingUp className="h-4 w-4 text-profit transition-transform duration-300 group-hover:scale-110" />
+                          <TrendingUp className="h-4 w-4 text-profit" />
                         ) : (
-                          <TrendingDown className="h-4 w-4 text-loss transition-transform duration-300 group-hover:scale-110" />
+                          <TrendingDown className="h-4 w-4 text-loss" />
                         )}
                         <span className="text-xs font-medium text-muted-foreground">Performance</span>
                       </div>
                       <div className="text-right">
                         <div className={cn(
-                          "text-sm font-bold font-mono transition-transform duration-300 group-hover:scale-105",
+                          "text-sm font-bold font-mono",
                           isProfit ? "text-profit" : "text-loss"
                         )}>
                           {isProfit ? "+" : ""}{profitLossPercent}%
@@ -414,7 +406,7 @@ const Home = () => {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="pt-3 border-t border-border/40 flex items-center justify-between">
+                    <div className="pt-3 border-t border-border/30 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">
                         {new Date(challenge.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>

@@ -22,37 +22,20 @@ export const StatsCard = ({
 }: StatsCardProps) => {
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-6 border transition-all duration-300 group",
-      "bg-card/80 backdrop-blur-sm hover-lift",
+      "relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-6 border transition-all duration-300 hover-lift group",
+      "bg-card/80 backdrop-blur-sm",
       variant === "profit" && "stat-profit",
       variant === "loss" && "stat-loss",
-      variant === "default" && "border-border/50 hover:border-primary/40 shadow-elegant",
-      variant === "neutral" && "border-border/50 shadow-elegant"
+      variant === "default" && "border-border/50 hover:border-primary/30",
+      variant === "neutral" && "border-border/50"
     )}>
-      {/* Animated background gradient */}
+      {/* Background glow effect */}
       <div className={cn(
-        "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500",
-        "bg-gradient-to-br from-transparent via-transparent",
-        variant === "profit" && "to-profit/5",
-        variant === "loss" && "to-loss/5",
-        variant === "default" && "to-primary/5",
-        variant === "neutral" && "to-muted/10"
-      )} />
-
-      {/* Background orb effect */}
-      <div className={cn(
-        "absolute -top-10 sm:-top-16 -right-10 sm:-right-16 w-24 sm:w-40 h-24 sm:h-40 rounded-full blur-3xl transition-all duration-500",
-        "opacity-20 group-hover:opacity-40 group-hover:scale-110",
+        "absolute -top-8 sm:-top-12 -right-8 sm:-right-12 w-20 sm:w-32 h-20 sm:h-32 rounded-full blur-3xl opacity-20 transition-opacity duration-300 group-hover:opacity-40",
         variant === "profit" && "bg-profit",
         variant === "loss" && "bg-loss",
         variant === "default" && "bg-primary",
         variant === "neutral" && "bg-muted-foreground"
-      )} />
-
-      {/* Inner highlight line */}
-      <div className={cn(
-        "absolute top-0 left-0 right-0 h-px opacity-50",
-        "bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
       )} />
 
       <div className="relative z-10">
@@ -62,11 +45,10 @@ export const StatsCard = ({
           </span>
           {Icon && (
             <div className={cn(
-              "p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all duration-300",
-              "group-hover:scale-110 group-hover:shadow-lg",
-              variant === "profit" && "bg-profit/15 text-profit group-hover:bg-profit/25",
-              variant === "loss" && "bg-loss/15 text-loss group-hover:bg-loss/25",
-              variant === "default" && "bg-primary/15 text-primary group-hover:bg-primary/25",
+              "p-1.5 sm:p-2 rounded-lg sm:rounded-xl",
+              variant === "profit" && "bg-profit/10 text-profit",
+              variant === "loss" && "bg-loss/10 text-loss",
+              variant === "default" && "bg-primary/10 text-primary",
               variant === "neutral" && "bg-muted text-muted-foreground"
             )}>
               <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -75,8 +57,7 @@ export const StatsCard = ({
         </div>
 
         <div className={cn(
-          "text-xl sm:text-3xl font-bold font-mono tracking-tight mb-1 sm:mb-2 transition-transform duration-300",
-          "group-hover:scale-[1.02] origin-left",
+          "text-lg sm:text-3xl font-bold font-mono tracking-tight mb-1 sm:mb-2",
           variant === "profit" && "text-profit",
           variant === "loss" && "text-loss",
           variant === "neutral" && "text-muted-foreground",
@@ -86,14 +67,13 @@ export const StatsCard = ({
         </div>
 
         {(subtitle || percentage) && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             {subtitle && (
               <span className="text-[10px] sm:text-sm text-muted-foreground truncate">{subtitle}</span>
             )}
             {percentage && (
               <span className={cn(
-                "text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg",
-                "transition-all duration-300 group-hover:scale-105",
+                "text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg",
                 trend === "up" && "bg-profit/15 text-profit",
                 trend === "down" && "bg-loss/15 text-loss",
                 !trend && "bg-accent/15 text-accent-foreground"
