@@ -4,7 +4,7 @@ import { Checklist, ChecklistItem } from "@/types/checklist";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Type, List, CircleDot } from "lucide-react";
 import { useState } from "react";
 
 interface ChecklistViewModalProps {
@@ -16,6 +16,7 @@ interface ChecklistViewModalProps {
 const ViewItem = ({ item, level = 0 }: { item: ChecklistItem; level?: number }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = item.children && item.children.length > 0;
+  const itemType = item.type || 'checkbox';
 
   return (
     <div className={cn(level > 0 && "ml-6 border-l-2 border-border/50 pl-4")}>
@@ -37,15 +38,50 @@ const ViewItem = ({ item, level = 0 }: { item: ChecklistItem; level?: number }) 
           <div className="w-6" />
         )}
 
-        <Checkbox checked={item.completed} disabled className="shrink-0" />
-        <span
-          className={cn(
-            "text-sm",
-            item.completed && "line-through text-muted-foreground"
-          )}
-        >
-          {item.text}
-        </span>
+        {itemType === 'checkbox' && (
+          <>
+            <Checkbox checked={item.completed} disabled className="shrink-0" />
+            <span className={cn("text-sm", item.completed && "line-through text-muted-foreground")}>
+              {item.text}
+            </span>
+          </>
+        )}
+
+        {itemType === 'text' && (
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <Type className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium">{item.text}</span>
+            </div>
+            <p className="text-sm text-muted-foreground ml-5.5 mt-0.5">
+              {item.value || <span className="italic">No answer</span>}
+            </p>
+          </div>
+        )}
+
+        {itemType === 'dropdown' && (
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <List className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium">{item.text}</span>
+            </div>
+            <p className="text-sm text-muted-foreground ml-5.5 mt-0.5">
+              {item.value || <span className="italic">Not selected</span>}
+            </p>
+          </div>
+        )}
+
+        {itemType === 'radio' && (
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <CircleDot className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium">{item.text}</span>
+            </div>
+            <p className="text-sm text-muted-foreground ml-5.5 mt-0.5">
+              {item.value || <span className="italic">Not selected</span>}
+            </p>
+          </div>
+        )}
       </div>
 
       {hasChildren && isExpanded && (

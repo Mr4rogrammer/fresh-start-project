@@ -5,13 +5,13 @@ import { ref, push, remove, update, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, ArrowUp, ArrowDown, Copy, Menu, X } from "lucide-react";
+import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, ArrowUp, ArrowDown, Copy, Menu, X, Type, CheckSquare, List, CircleDot } from "lucide-react";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
 import { Input } from "@/components/ui/input";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
-import { Checklist, ChecklistItem } from "@/types/checklist";
+import { Checklist, ChecklistItem, ChecklistItemType } from "@/types/checklist";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -24,8 +24,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 // Checklist Item Row Component
+// Control type icon helper
+const getControlTypeIcon = (type: ChecklistItemType) => {
+  switch (type) {
+    case 'text': return <Type className="h-3.5 w-3.5" />;
+    case 'dropdown': return <List className="h-3.5 w-3.5" />;
+    case 'radio': return <CircleDot className="h-3.5 w-3.5" />;
+    default: return <CheckSquare className="h-3.5 w-3.5" />;
+  }
+};
+
 const ChecklistItemRow = ({
   item,
   onToggle,
@@ -34,6 +47,7 @@ const ChecklistItemRow = ({
   onEdit,
   onMoveUp,
   onMoveDown,
+  onValueChange,
   canMoveUp,
   canMoveDown,
   level = 0,
@@ -45,6 +59,7 @@ const ChecklistItemRow = ({
   onEdit: (id: string, text: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
+  onValueChange: (id: string, value: string) => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
   level?: number;
@@ -88,9 +103,11 @@ const ChecklistItemRow = ({
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={(e) => {
-          // Don't toggle if clicking on buttons or inputs
-          if ((e.target as HTMLElement).closest('button, input')) return;
-          onToggle(item.id);
+          // Don't toggle if clicking on buttons, inputs, selects, or labels
+          if ((e.target as HTMLElement).closest('button, input, [role="combobox"], [role="radio"], [role="listbox"], label')) return;
+          // Only toggle for checkbox type
+          const itemType = item.type || 'checkbox';
+          if (itemType === 'checkbox') onToggle(item.id);
         }}
       >
         {/* Expand/Collapse button */}
@@ -107,44 +124,104 @@ const ChecklistItemRow = ({
           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
 
-        {/* Checkbox */}
-        <div
-          className={cn(
-            "w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0",
-            item.completed
-              ? "bg-emerald-500 border-emerald-500 text-white"
-              : "border-muted-foreground/40 hover:border-emerald-500"
-          )}
-        >
-          {item.completed && <Check className="h-3 w-3" />}
-        </div>
-
-        {/* Item text or edit input */}
-        {isEditing ? (
-          <Input
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleEdit();
-              if (e.key === "Escape") setIsEditing(false);
-            }}
-            onBlur={handleEdit}
-            className="h-7 flex-1 text-sm"
-            autoFocus
-          />
-        ) : (
-          <span
-            className={cn(
-              "flex-1 text-xs md:text-sm cursor-pointer truncate",
-              item.completed && "line-through text-muted-foreground"
+        {/* Control based on item type */}
+        {(!item.type || item.type === 'checkbox') && (
+          <>
+            <div
+              className={cn(
+                "w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0",
+                item.completed
+                  ? "bg-primary border-primary text-primary-foreground"
+                  : "border-muted-foreground/40 hover:border-primary"
+              )}
+            >
+              {item.completed && <Check className="h-3 w-3" />}
+            </div>
+            {isEditing ? (
+              <Input
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleEdit();
+                  if (e.key === "Escape") setIsEditing(false);
+                }}
+                onBlur={handleEdit}
+                className="h-7 flex-1 text-sm"
+                autoFocus
+              />
+            ) : (
+              <span
+                className={cn(
+                  "flex-1 text-xs md:text-sm cursor-pointer truncate",
+                  item.completed && "line-through text-muted-foreground"
+                )}
+                onDoubleClick={() => setIsEditing(true)}
+              >
+                {item.text}
+              </span>
             )}
-            onDoubleClick={() => setIsEditing(true)}
-          >
-            {item.text}
+          </>
+        )}
+
+        {item.type === 'text' && (
+          <div className="flex-1 flex flex-col gap-1 min-w-0">
+            <span className="text-xs md:text-sm font-medium truncate">{item.text}</span>
+            <Input
+              value={item.value || ''}
+              onChange={(e) => onValueChange(item.id, e.target.value)}
+              placeholder="Enter your answer..."
+              className="h-8 text-sm mt-0"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+
+        {item.type === 'dropdown' && (
+          <div className="flex-1 flex flex-col gap-1 min-w-0">
+            <span className="text-xs md:text-sm font-medium truncate">{item.text}</span>
+            <Select
+              value={item.value || ''}
+              onValueChange={(val) => onValueChange(item.id, val)}
+            >
+              <SelectTrigger className="h-8 text-sm" onClick={(e) => e.stopPropagation()}>
+                <SelectValue placeholder="Select an option..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(item.options || []).map((opt, i) => (
+                  <SelectItem key={i} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {item.type === 'radio' && (
+          <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+            <span className="text-xs md:text-sm font-medium truncate">{item.text}</span>
+            <RadioGroup
+              value={item.value || ''}
+              onValueChange={(val) => onValueChange(item.id, val)}
+              className="flex flex-col gap-1.5"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              {(item.options || []).map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <RadioGroupItem value={opt} id={`${item.id}-${i}`} />
+                  <Label htmlFor={`${item.id}-${i}`} className="text-xs md:text-sm cursor-pointer">{opt}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+        )}
+
+        {/* Type badge */}
+        {item.type && item.type !== 'checkbox' && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+            {item.type}
           </span>
         )}
 
-        {/* Action buttons - always visible on mobile, hover on desktop */}
+        {/* Action buttons */}
         <div className="flex items-center gap-0.5 md:gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
           <Button
             variant="ghost"
@@ -229,6 +306,7 @@ const ChecklistItemRow = ({
               onEdit={onEdit}
               onMoveUp={onMoveUp}
               onMoveDown={onMoveDown}
+              onValueChange={onValueChange}
               canMoveUp={index > 0}
               canMoveDown={index < item.children.length - 1}
               level={level + 1}
@@ -249,6 +327,8 @@ const Checklists = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [newItemText, setNewItemText] = useState("");
+  const [newItemType, setNewItemType] = useState<ChecklistItemType>('checkbox');
+  const [newItemOptions, setNewItemOptions] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Swipe gesture state
@@ -506,6 +586,11 @@ const Checklists = () => {
       text: newItemText.trim(),
       completed: false,
       children: [],
+      type: newItemType,
+      options: (newItemType === 'dropdown' || newItemType === 'radio') 
+        ? newItemOptions.split(',').map(o => o.trim()).filter(Boolean) 
+        : undefined,
+      value: '',
     };
 
     updateChecklist({
@@ -513,6 +598,7 @@ const Checklists = () => {
       items: [...selectedChecklist.items, newItem],
     });
     setNewItemText("");
+    setNewItemOptions("");
   };
 
   // Deep clone helper
@@ -607,6 +693,16 @@ const Checklists = () => {
     updateChecklist({ ...selectedChecklist, items: updatedItems });
   };
 
+  const handleValueChange = (itemId: string, value: string) => {
+    if (!selectedChecklist) return;
+    const updatedItems = updateItemById(deepClone(selectedChecklist.items), itemId, (item) => ({
+      ...item,
+      value,
+      completed: !!value, // mark completed when value is set
+    }));
+    updateChecklist({ ...selectedChecklist, items: updatedItems });
+  };
+
   const handleResetChecks = () => {
     if (!selectedChecklist) return;
 
@@ -615,6 +711,7 @@ const Checklists = () => {
         return items.map((item) => ({
           ...item,
           completed: false,
+          value: '',
           children: item.children ? resetItems(item.children) : [],
         }));
       };
@@ -917,20 +1014,49 @@ const Checklists = () => {
               {/* Items */}
               <div className="flex-1 overflow-y-auto p-4 md:p-6">
                 {/* Add new item */}
-                <div className="flex items-center gap-2 mb-4">
-                  <Input
-                    value={newItemText}
-                    onChange={(e) => setNewItemText(e.target.value)}
-                    placeholder="Add new item..."
-                    className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddItem();
-                    }}
-                  />
-                  <Button onClick={handleAddItem} disabled={!newItemText.trim()} size="sm" className="md:size-default">
-                    <Plus className="h-4 w-4 md:mr-1" />
-                    <span className="hidden md:inline">Add</span>
-                  </Button>
+                <div className="space-y-3 mb-4 p-3 border rounded-xl bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newItemText}
+                      onChange={(e) => setNewItemText(e.target.value)}
+                      placeholder="Item label..."
+                      className="flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddItem();
+                      }}
+                    />
+                    <Select value={newItemType} onValueChange={(v) => setNewItemType(v as ChecklistItemType)}>
+                      <SelectTrigger className="w-[130px] h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="checkbox">
+                          <span className="flex items-center gap-2"><CheckSquare className="h-3.5 w-3.5" /> Checkbox</span>
+                        </SelectItem>
+                        <SelectItem value="text">
+                          <span className="flex items-center gap-2"><Type className="h-3.5 w-3.5" /> Text</span>
+                        </SelectItem>
+                        <SelectItem value="dropdown">
+                          <span className="flex items-center gap-2"><List className="h-3.5 w-3.5" /> Dropdown</span>
+                        </SelectItem>
+                        <SelectItem value="radio">
+                          <span className="flex items-center gap-2"><CircleDot className="h-3.5 w-3.5" /> Radio</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleAddItem} disabled={!newItemText.trim()} size="sm">
+                      <Plus className="h-4 w-4 md:mr-1" />
+                      <span className="hidden md:inline">Add</span>
+                    </Button>
+                  </div>
+                  {(newItemType === 'dropdown' || newItemType === 'radio') && (
+                    <Input
+                      value={newItemOptions}
+                      onChange={(e) => setNewItemOptions(e.target.value)}
+                      placeholder="Options (comma-separated, e.g. Yes, No, Maybe)"
+                      className="text-sm"
+                    />
+                  )}
                 </div>
 
                 {/* Checklist items */}
@@ -951,6 +1077,7 @@ const Checklists = () => {
                         onEdit={handleEditItem}
                         onMoveUp={handleMoveUp}
                         onMoveDown={handleMoveDown}
+                        onValueChange={handleValueChange}
                         canMoveUp={index > 0}
                         canMoveDown={index < selectedChecklist.items.length - 1}
                       />

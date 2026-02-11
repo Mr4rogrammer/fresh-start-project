@@ -3,9 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checklist, ChecklistItem } from "@/types/checklist";
+import { Checklist, ChecklistItem, ChecklistItemType } from "@/types/checklist";
 import { ChecklistItemComponent } from "./ChecklistItemComponent";
-import { Plus, ListChecks } from "lucide-react";
+import { Plus, ListChecks, CheckSquare, Type, List, CircleDot } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ChecklistFormProps {
   open: boolean;
@@ -30,6 +31,8 @@ export const ChecklistForm = ({
   const [title, setTitle] = useState("");
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [newItemText, setNewItemText] = useState("");
+  const [newItemType, setNewItemType] = useState<ChecklistItemType>('checkbox');
+  const [newItemOptions, setNewItemOptions] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -51,9 +54,15 @@ export const ChecklistForm = ({
         text: newItemText.trim(),
         completed: false,
         children: [],
+        type: newItemType,
+        options: (newItemType === 'dropdown' || newItemType === 'radio')
+          ? newItemOptions.split(',').map(o => o.trim()).filter(Boolean)
+          : undefined,
+        value: '',
       };
       setItems(prev => [...prev, newItem]);
       setNewItemText("");
+      setNewItemOptions("");
     }
   };
 
@@ -182,7 +191,7 @@ export const ChecklistForm = ({
                 value={newItemText}
                 onChange={(e) => setNewItemText(e.target.value)}
                 placeholder="Add a new item..."
-                className="h-11 text-base"
+                className="h-11 text-base flex-1"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -190,6 +199,25 @@ export const ChecklistForm = ({
                   }
                 }}
               />
+              <Select value={newItemType} onValueChange={(v) => setNewItemType(v as ChecklistItemType)}>
+                <SelectTrigger className="w-[130px] h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="checkbox">
+                    <span className="flex items-center gap-2"><CheckSquare className="h-3.5 w-3.5" /> Checkbox</span>
+                  </SelectItem>
+                  <SelectItem value="text">
+                    <span className="flex items-center gap-2"><Type className="h-3.5 w-3.5" /> Text</span>
+                  </SelectItem>
+                  <SelectItem value="dropdown">
+                    <span className="flex items-center gap-2"><List className="h-3.5 w-3.5" /> Dropdown</span>
+                  </SelectItem>
+                  <SelectItem value="radio">
+                    <span className="flex items-center gap-2"><CircleDot className="h-3.5 w-3.5" /> Radio</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               <Button 
                 type="button" 
                 onClick={handleAddItem}
@@ -200,6 +228,14 @@ export const ChecklistForm = ({
                 Add
               </Button>
             </div>
+            {(newItemType === 'dropdown' || newItemType === 'radio') && (
+              <Input
+                value={newItemOptions}
+                onChange={(e) => setNewItemOptions(e.target.value)}
+                placeholder="Options (comma-separated, e.g. Yes, No, Maybe)"
+                className="h-10 text-sm"
+              />
+            )}
           </div>
 
           {/* Items List */}
