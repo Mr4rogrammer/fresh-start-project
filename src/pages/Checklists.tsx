@@ -5,7 +5,7 @@ import { ref, push, remove, update, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, ArrowUp, ArrowDown, Copy, Menu, X, Type, CheckSquare, List, CircleDot } from "lucide-react";
+import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, ArrowUp, ArrowDown, Copy, Menu, X, Type, CheckSquare, List, CircleDot, FileText } from "lucide-react";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { checklistTemplates } from "@/data/checklistTemplates";
 
 // Checklist Item Row Component
 // Control type icon helper
@@ -462,6 +463,31 @@ const Checklists = () => {
     }
   };
 
+  const createFromTemplate = async (templateIndex: number) => {
+    if (!user) return;
+    const template = checklistTemplates[templateIndex];
+    if (!template) return;
+
+    try {
+      const checklistsRef = ref(db, `users/${user.uid}/checklists`);
+      const newChecklist = {
+        title: template.name,
+        items: JSON.parse(JSON.stringify(template.items)),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const newRef = await push(checklistsRef, newChecklist);
+      const createdChecklist = { id: newRef.key!, ...newChecklist };
+      setChecklists((prev) => [createdChecklist, ...prev]);
+      setSelectedChecklist(createdChecklist);
+      setShowTemplateDialog(false);
+      toast.success(`"${template.name}" created from template`);
+    } catch (error) {
+      toast.error("Failed to create from template");
+    }
+  };
+
   const updateChecklist = async (updatedChecklist: Checklist) => {
     if (!user) return;
 
@@ -487,6 +513,7 @@ const Checklists = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [duplicateName, setDuplicateName] = useState("");
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
 
   const duplicateChecklist = async () => {
     if (!user || !selectedChecklist || !duplicateName.trim()) return;
@@ -780,10 +807,14 @@ const Checklists = () => {
   // Sidebar content component to reuse for desktop and mobile
   const SidebarContent = ({ onSelectChecklist }: { onSelectChecklist?: () => void }) => (
     <>
-      <div className="p-4 border-b">
+      <div className="p-4 border-b space-y-2">
         <Button onClick={createNewChecklist} className="w-full gap-2" variant="default">
           <Plus className="h-4 w-4" />
           New Checklist
+        </Button>
+        <Button onClick={() => setShowTemplateDialog(true)} className="w-full gap-2" variant="outline">
+          <FileText className="h-4 w-4" />
+          From Template
         </Button>
       </div>
 
@@ -1183,6 +1214,41 @@ const Checklists = () => {
             <AlertDialogAction onClick={duplicateChecklist} disabled={!duplicateName.trim()}>
               Duplicate
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Template Picker Dialog */}
+      <AlertDialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Create from Template
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose a pre-built checklist template to get started quickly.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2 max-h-[50vh] overflow-y-auto">
+            {checklistTemplates.map((template, index) => (
+              <button
+                key={index}
+                onClick={() => createFromTemplate(index)}
+                className="w-full text-left p-4 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/50 transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{template.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm group-hover:text-primary transition-colors">{template.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{template.description}</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1.5">{template.items.length} sections</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
