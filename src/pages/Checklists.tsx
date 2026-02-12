@@ -29,15 +29,31 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { checklistTemplates } from "@/data/checklistTemplates";
 
-// Checklist Item Row Component
-// Control type icon helper
-const getControlTypeIcon = (type: ChecklistItemType) => {
-  switch (type) {
-    case 'text': return <Type className="h-3.5 w-3.5" />;
-    case 'dropdown': return <List className="h-3.5 w-3.5" />;
-    case 'radio': return <CircleDot className="h-3.5 w-3.5" />;
-    default: return <CheckSquare className="h-3.5 w-3.5" />;
-  }
+// Checklist Item Row Component — Card-based design matching reference UI
+
+// Section header icon backgrounds
+const sectionIconBg: Record<string, string> = {
+  "🕐": "bg-amber-100 dark:bg-amber-900/30",
+  "🔍": "bg-red-100 dark:bg-red-900/30",
+  "⚡": "bg-blue-100 dark:bg-blue-900/30",
+  "🏁": "bg-green-100 dark:bg-green-900/30",
+  "📝": "bg-purple-100 dark:bg-purple-900/30",
+  "📋": "bg-orange-100 dark:bg-orange-900/30",
+};
+
+const getSectionIcon = (text: string) => {
+  const emoji = text.match(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u)?.[0];
+  return emoji || "📌";
+};
+
+const parseSectionTitle = (text: string) => {
+  // Extract emoji, title, and time from strings like "🕐 PRE-MARKET PREP (5:15 - 5:30 AM IST)"
+  const emoji = text.match(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u)?.[0] || "";
+  const withoutEmoji = text.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/u, "");
+  const timeMatch = withoutEmoji.match(/\(([^)]+)\)/);
+  const title = withoutEmoji.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const time = timeMatch?.[1] || "";
+  return { emoji, title, time };
 };
 
 const ChecklistItemRow = ({
@@ -71,6 +87,7 @@ const ChecklistItemRow = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(item.text);
   const hasChildren = item.children && item.children.length > 0;
+  const itemType = item.type || 'checkbox';
 
   const handleAddChild = () => {
     if (newChildText.trim()) {
@@ -87,57 +104,19 @@ const ChecklistItemRow = ({
     }
   };
 
-  return (
-    <div className="relative">
-      {/* Vertical line connector for nested items */}
-      {level > 0 && (
-        <div
-          className="absolute left-0 top-0 bottom-0 w-px bg-border"
-          style={{ left: `${(level - 1) * 24 + 12}px` }}
-        />
-      )}
-      
-      <div
-        className={cn(
-          "flex items-center gap-1 md:gap-2 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors group cursor-pointer",
-          item.completed && "opacity-60"
-        )}
-        style={{ paddingLeft: `${level * 16 + 8}px` }}
-        onClick={(e) => {
-          // Don't toggle if clicking on buttons, inputs, selects, or labels
-          if ((e.target as HTMLElement).closest('button, input, [role="combobox"], [role="radio"], [role="listbox"], label')) return;
-          // Only toggle for checkbox type
-          const itemType = item.type || 'checkbox';
-          if (itemType === 'checkbox') onToggle(item.id);
-        }}
-      >
-        {/* Expand/Collapse button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsExpanded(!isExpanded);
-          }}
-          className={cn(
-            "w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0",
-            !hasChildren && "invisible"
-          )}
-        >
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
+  // ── SECTION HEADER (parent with children) ──
+  if (hasChildren && level === 0) {
+    const { emoji, title, time } = parseSectionTitle(item.text);
+    const iconBg = sectionIconBg[emoji] || "bg-muted";
 
-        {/* Control based on item type */}
-        {(!item.type || item.type === 'checkbox') && (
-          <>
-            <div
-              className={cn(
-                "w-5 h-5 rounded border-2 flex items-center justify-center transition-all shrink-0",
-                item.completed
-                  ? "bg-primary border-primary text-primary-foreground"
-                  : "border-muted-foreground/40 hover:border-primary"
-              )}
-            >
-              {item.completed && <Check className="h-3 w-3" />}
-            </div>
+    return (
+      <div className="mb-6">
+        {/* Section header */}
+        <div className="flex items-center gap-3 mb-3 group">
+          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0", iconBg)}>
+            {emoji || "📌"}
+          </div>
+          <div className="flex-1 min-w-0">
             {isEditing ? (
               <Input
                 value={editText}
@@ -147,131 +126,283 @@ const ChecklistItemRow = ({
                   if (e.key === "Escape") setIsEditing(false);
                 }}
                 onBlur={handleEdit}
-                className="h-7 flex-1 text-sm"
+                className="text-base font-bold h-8"
                 autoFocus
               />
             ) : (
-              <span
-                className={cn(
-                  "flex-1 text-xs md:text-sm cursor-pointer truncate",
-                  item.completed && "line-through text-muted-foreground"
-                )}
-                onDoubleClick={() => setIsEditing(true)}
-              >
-                {item.text}
-              </span>
+              <h3 className="font-bold text-base tracking-tight truncate">{title}</h3>
             )}
-          </>
-        )}
+            {time && <p className="text-xs text-muted-foreground mt-0.5">{time}</p>}
+          </div>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+          >
+            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {/* Section action buttons */}
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="sm" onClick={() => setIsAddingChild(true)} className="h-7 w-7 p-0 text-muted-foreground hover:text-primary">
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setIsEditing(true); setEditText(item.text); }} className="h-7 w-7 p-0 text-muted-foreground hover:text-primary">
+              <Edit2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(item.id)} className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
 
-        {item.type === 'text' && (
-          <div className="flex-1 flex flex-col gap-1 min-w-0">
-            <span className="text-xs md:text-sm font-medium truncate">{item.text}</span>
+        {/* Add child input */}
+        {isAddingChild && (
+          <div className="flex items-center gap-2 mb-3 ml-2">
             <Input
-              value={item.value || ''}
-              onChange={(e) => onValueChange(item.id, e.target.value)}
-              placeholder="Enter your answer..."
-              className="h-8 text-sm mt-0"
-              onClick={(e) => e.stopPropagation()}
+              value={newChildText}
+              onChange={(e) => setNewChildText(e.target.value)}
+              placeholder="Add item to this section..."
+              className="h-9 flex-1 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddChild();
+                if (e.key === "Escape") setIsAddingChild(false);
+              }}
+              autoFocus
             />
+            <Button size="sm" onClick={handleAddChild} className="h-9">Add</Button>
+            <Button size="sm" variant="ghost" onClick={() => setIsAddingChild(false)} className="h-9">
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         )}
 
-        {item.type === 'dropdown' && (
-          <div className="flex-1 flex flex-col gap-1 min-w-0">
-            <span className="text-xs md:text-sm font-medium truncate">{item.text}</span>
-            <Select
-              value={item.value || ''}
-              onValueChange={(val) => onValueChange(item.id, val)}
-            >
-              <SelectTrigger className="h-8 text-sm" onClick={(e) => e.stopPropagation()}>
-                <SelectValue placeholder="Select an option..." />
-              </SelectTrigger>
-              <SelectContent>
-                {(item.options || []).map((opt, i) => (
-                  <SelectItem key={i} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Section children */}
+        {isExpanded && (
+          <div className="space-y-2">
+            {item.children.map((child, index) => (
+              <ChecklistItemRow
+                key={child.id}
+                item={child}
+                onToggle={onToggle}
+                onAddChild={onAddChild}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                onMoveUp={onMoveUp}
+                onMoveDown={onMoveDown}
+                onValueChange={onValueChange}
+                canMoveUp={index > 0}
+                canMoveDown={index < item.children.length - 1}
+                level={level + 1}
+              />
+            ))}
           </div>
         )}
+      </div>
+    );
+  }
 
-        {item.type === 'radio' && (
-          <div className="flex-1 flex flex-col gap-1.5 min-w-0">
-            <span className="text-xs md:text-sm font-medium truncate">{item.text}</span>
-            <RadioGroup
-              value={item.value || ''}
-              onValueChange={(val) => onValueChange(item.id, val)}
-              className="flex flex-col gap-1.5"
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+  // ── RADIO TYPE — Horizontal pill buttons ──
+  if (itemType === 'radio') {
+    return (
+      <div className="mb-4">
+        <p className="text-sm font-medium text-muted-foreground mb-2.5 flex items-center justify-between group">
+          <span>{item.text}</span>
+          <span className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="sm" onClick={() => { setIsEditing(true); setEditText(item.text); }} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary">
+              <Edit2 className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onDelete(item.id)} className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive">
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </span>
+        </p>
+        {isEditing && (
+          <Input
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleEdit();
+              if (e.key === "Escape") setIsEditing(false);
+            }}
+            onBlur={handleEdit}
+            className="h-8 text-sm mb-2"
+            autoFocus
+          />
+        )}
+        <div className="flex gap-2 flex-wrap">
+          {(item.options || []).map((opt, i) => (
+            <button
+              key={i}
+              onClick={() => onValueChange(item.id, item.value === opt ? '' : opt)}
+              className={cn(
+                "flex-1 min-w-[80px] px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-center",
+                item.value === opt
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card hover:border-muted-foreground/30 text-foreground"
+              )}
             >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── TEXT TYPE — Card with input ──
+  if (itemType === 'text') {
+    return (
+      <div className="mb-3">
+        <div className="rounded-xl border bg-card p-4 group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-muted-foreground">{item.text}</span>
+            <span className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="sm" onClick={() => { setIsEditing(true); setEditText(item.text); }} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary">
+                <Edit2 className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDelete(item.id)} className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </span>
+          </div>
+          {isEditing && (
+            <Input
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleEdit();
+                if (e.key === "Escape") setIsEditing(false);
+              }}
+              onBlur={handleEdit}
+              className="h-8 text-sm mb-2"
+              autoFocus
+            />
+          )}
+          <Input
+            value={item.value || ''}
+            onChange={(e) => onValueChange(item.id, e.target.value)}
+            placeholder="Type your answer..."
+            className="h-10 text-sm border-dashed"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // ── DROPDOWN TYPE — Card with select ──
+  if (itemType === 'dropdown') {
+    return (
+      <div className="mb-3">
+        <div className="rounded-xl border bg-card p-4 group">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-muted-foreground">{item.text}</span>
+            <span className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="sm" onClick={() => { setIsEditing(true); setEditText(item.text); }} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary">
+                <Edit2 className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onDelete(item.id)} className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </span>
+          </div>
+          <Select value={item.value || ''} onValueChange={(val) => onValueChange(item.id, val)}>
+            <SelectTrigger className="h-10 text-sm">
+              <SelectValue placeholder="Select an option..." />
+            </SelectTrigger>
+            <SelectContent>
               {(item.options || []).map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <RadioGroupItem value={opt} id={`${item.id}-${i}`} />
-                  <Label htmlFor={`${item.id}-${i}`} className="text-xs md:text-sm cursor-pointer">{opt}</Label>
-                </div>
+                <SelectItem key={i} value={opt}>{opt}</SelectItem>
               ))}
-            </RadioGroup>
-          </div>
-        )}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Type badge */}
-        {item.type && item.type !== 'checkbox' && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-            {item.type}
+  // ── CHECKBOX TYPE — Rounded card style ──
+  return (
+    <div className="relative">
+      <div
+        className={cn(
+          "rounded-xl border bg-card px-4 py-3.5 flex items-center gap-3 transition-all cursor-pointer group",
+          "hover:shadow-sm hover:border-primary/20",
+          item.completed && "opacity-60 bg-muted/50"
+        )}
+        style={level > 1 ? { marginLeft: `${(level - 1) * 16}px` } : undefined}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button, input')) return;
+          onToggle(item.id);
+        }}
+      >
+        {/* Checkbox */}
+        <div
+          className={cn(
+            "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",
+            item.completed
+              ? "bg-primary border-primary text-primary-foreground"
+              : "border-muted-foreground/30 hover:border-primary"
+          )}
+        >
+          {item.completed && <Check className="h-3.5 w-3.5" />}
+        </div>
+
+        {/* Text */}
+        {isEditing ? (
+          <Input
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleEdit();
+              if (e.key === "Escape") setIsEditing(false);
+            }}
+            onBlur={handleEdit}
+            className="h-8 flex-1 text-sm"
+            autoFocus
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className={cn(
+              "flex-1 text-sm leading-relaxed",
+              item.completed && "line-through text-muted-foreground"
+            )}
+          >
+            {item.text}
           </span>
         )}
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-0.5 md:gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onMoveUp(item.id)}
-            disabled={!canMoveUp}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30 hidden md:flex"
-          >
-            <ArrowUp className="h-3.5 w-3.5" />
+        {/* Action buttons - show on hover */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          {hasChildren && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+              className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </button>
+          )}
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onMoveUp(item.id); }} disabled={!canMoveUp} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30 hidden md:flex">
+            <ArrowUp className="h-3 w-3" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onMoveDown(item.id)}
-            disabled={!canMoveDown}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30 hidden md:flex"
-          >
-            <ArrowDown className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onMoveDown(item.id); }} disabled={!canMoveDown} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary disabled:opacity-30 hidden md:flex">
+            <ArrowDown className="h-3 w-3" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsAddingChild(true)}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-emerald-500"
-          >
-            <Plus className="h-3 md:h-3.5 w-3 md:w-3.5" />
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setIsAddingChild(true); }} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary">
+            <Plus className="h-3 w-3" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsEditing(true)}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
-          >
-            <Edit2 className="h-3 md:h-3.5 w-3 md:w-3.5" />
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setIsEditing(true); setEditText(item.text); }} className="h-6 w-6 p-0 text-muted-foreground hover:text-primary">
+            <Edit2 className="h-3 w-3" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete(item.id)}
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-3 md:h-3.5 w-3 md:w-3.5" />
+          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive">
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
 
       {/* Add child input */}
       {isAddingChild && (
-        <div className="flex items-center gap-2 py-2" style={{ paddingLeft: `${(level + 1) * 16 + 24}px` }}>
+        <div className="flex items-center gap-2 mt-2 ml-4">
           <Input
             value={newChildText}
             onChange={(e) => setNewChildText(e.target.value)}
@@ -283,20 +414,16 @@ const ChecklistItemRow = ({
             }}
             autoFocus
           />
-          <Button size="sm" onClick={handleAddChild} className="h-8">
-            <span className="hidden xs:inline">Add</span>
-            <Check className="h-4 w-4 xs:hidden" />
-          </Button>
+          <Button size="sm" onClick={handleAddChild} className="h-8">Add</Button>
           <Button size="sm" variant="ghost" onClick={() => setIsAddingChild(false)} className="h-8">
-            <span className="hidden xs:inline">Cancel</span>
-            <X className="h-4 w-4 xs:hidden" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       )}
 
       {/* Children */}
       {hasChildren && isExpanded && (
-        <div>
+        <div className="mt-2 space-y-2 ml-4">
           {item.children.map((child, index) => (
             <ChecklistItemRow
               key={child.id}
@@ -1029,13 +1156,13 @@ const Checklists = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium text-emerald-500">
+                    <span className="font-medium text-primary">
                       {selectedStats.completed}/{selectedStats.total} ({progress}%)
                     </span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
                     <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                      className="bg-primary h-full rounded-full transition-all duration-500"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
@@ -1091,7 +1218,7 @@ const Checklists = () => {
                 </div>
 
                 {/* Checklist items */}
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {selectedChecklist.items.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <ListChecks className="h-12 w-12 mx-auto mb-3 opacity-50" />
