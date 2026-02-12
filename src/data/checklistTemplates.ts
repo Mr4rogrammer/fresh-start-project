@@ -49,7 +49,7 @@ export const checklistTemplates: ChecklistTemplate[] = [
           { id: id(), text: "CANDLE 1: Identify range candle. Mark HIGH and LOW", completed: false, children: [] },
           { id: id(), text: "CANDLE 2: Does it sweep above HIGH or below LOW?", completed: false, children: [] },
           { id: id(), text: "Candle 2 closes BACK INSIDE Candle 1 range?", completed: false, children: [] },
-          { id: id(), text: "Drop to 5-min: CHoCH or FVG confirmation found?", completed: false, children: [] },
+          { id: id(), text: "Drop to 5-min or 1-min: CHoCH or FVG confirmation found?", completed: false, children: [] },
           { id: id(), text: "All confirmations = YES? Ready to trade!", completed: false, children: [] },
         ],
       },
