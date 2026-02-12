@@ -35,7 +35,7 @@ export const checklistTemplates: ChecklistTemplate[] = [
         text: "1H Trend Direction",
         completed: false,
         type: "radio",
-        options: ["Bullish 🟢", "Bearish 🔴"],
+        options: ["📈 Bullish", "📉 Bearish", "➡️ Sideways"],
         value: "",
         children: [],
       },
