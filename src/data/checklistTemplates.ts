@@ -99,54 +99,7 @@ export const checklistTemplates: ChecklistTemplate[] = [
           { id: id(), text: "Close remaining trades before 8:30 AM", completed: false, children: [] },
           { id: id(), text: "DONE. Close charts. Go to work.", completed: false, children: [] },
         ],
-      },
-      // ── JOURNAL ──
-      {
-        id: id(),
-        text: "📝 EVENING JOURNAL",
-        completed: false,
-        type: "checkbox",
-        children: [
-          { id: id(), text: "Followed Checklist?", completed: false, type: "radio", options: ["Yes ✅", "No ❌"], value: "", children: [] },
-          { id: id(), text: "Waited for Setup?", completed: false, type: "radio", options: ["Yes ✅", "No ❌"], value: "", children: [] },
-          { id: id(), text: "Followed Stop Loss?", completed: false, type: "radio", options: ["Yes ✅", "No ❌"], value: "", children: [] },
-          { id: id(), text: "Took only 1 trade?", completed: false, type: "radio", options: ["Yes, only 1 ✅", "No ❌"], value: "", children: [] },
-          { id: id(), text: "Avoided trading social media?", completed: false, type: "radio", options: ["Clean ✅", "No ❌"], value: "", children: [] },
-        ],
-      },
-      // Emotion
-      {
-        id: id(),
-        text: "Emotion during trading",
-        completed: false,
-        type: "radio",
-        options: ["😌 Calm", "😰 Anxious", "🤩 Excited"],
-        value: "",
-        children: [],
-      },
-      // Text learnings
-      { id: id(), text: "What I learned today #1", completed: false, type: "text", value: "", children: [] },
-      { id: id(), text: "What I learned today #2", completed: false, type: "text", value: "", children: [] },
-      { id: id(), text: "What I can do better", completed: false, type: "text", value: "", children: [] },
-      // ── TRADING RULES ──
-      {
-        id: id(),
-        text: "📋 MY TRADING RULES (Read every morning)",
-        completed: false,
-        type: "checkbox",
-        children: [
-          { id: id(), text: "I trade ONLY USD/JPY. Nothing else.", completed: false, children: [] },
-          { id: id(), text: "I use ONLY CRT strategy. Nothing else.", completed: false, children: [] },
-          { id: id(), text: "I trade ONLY Asian session (5:30 - 8:30 AM IST). Then I stop.", completed: false, children: [] },
-          { id: id(), text: "I take MAXIMUM 1 trade per day. No exceptions.", completed: false, children: [] },
-          { id: id(), text: "I ALWAYS use a stop loss. Always.", completed: false, children: [] },
-          { id: id(), text: "I risk MAXIMUM 1-2% per trade. Never more.", completed: false, children: [] },
-          { id: id(), text: "I DO NOT check trading social media. My strategy is enough.", completed: false, children: [] },
-          { id: id(), text: "I DO NOT revenge trade after a loss. I walk away.", completed: false, children: [] },
-          { id: id(), text: "No valid CRT = No trade. NO TRADE is a WINNING day.", completed: false, children: [] },
-          { id: id(), text: "I trust my process. Results come with consistency.", completed: false, children: [] },
-        ],
-      },
+      }
     ],
   },
 ];
