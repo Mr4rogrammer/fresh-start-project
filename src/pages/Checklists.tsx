@@ -1071,7 +1071,7 @@ const Checklists = () => {
           onTouchEnd={onTouchEnd}
         >
           {selectedChecklist ? (
-            <>
+            <div id="checklist-export-area">
               {/* Header */}
               <div className="p-4 md:p-6 border-b space-y-4">
                 <div className="flex items-start justify-between gap-2">
@@ -1213,7 +1213,7 @@ const Checklists = () => {
                   </div>
                 )}
               </div>
-            </>
+            </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-4">
               {/* Mobile menu button for empty state */}
