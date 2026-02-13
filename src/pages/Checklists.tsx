@@ -5,7 +5,7 @@ import { ref, push, remove, update, get } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, ArrowUp, ArrowDown, Copy, Menu, X, Type, CheckSquare, List, CircleDot, FileText } from "lucide-react";
+import { Trash2, Plus, RotateCcw, ChevronDown, ChevronRight, Check, ListChecks, Edit2, ArrowUp, ArrowDown, Copy, Menu, X, Type, CheckSquare, List, CircleDot, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { checklistTemplates } from "@/data/checklistTemplates";
+import { exportChecklistPdf } from "@/lib/exportChecklistPdf";
 
 // Checklist Item Row Component — Card-based design matching reference UI
 
@@ -1123,7 +1124,11 @@ const Checklists = () => {
                   </div>
 
                   {/* Desktop action buttons */}
-                  <div className="hidden sm:flex items-center gap-2 shrink-0">
+                   <div className="hidden sm:flex items-center gap-2 shrink-0">
+                    <Button variant="outline" size="sm" onClick={() => exportChecklistPdf(selectedChecklist)} className="gap-1.5">
+                      <Download className="h-4 w-4" />
+                      Export PDF
+                    </Button>
                     <Button variant="outline" size="sm" onClick={handleOpenDuplicateDialog} className="gap-1.5">
                       <Copy className="h-4 w-4" />
                       Duplicate
@@ -1140,6 +1145,9 @@ const Checklists = () => {
 
                   {/* Mobile action buttons - icons only */}
                   <div className="flex sm:hidden items-center gap-1 shrink-0">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => exportChecklistPdf(selectedChecklist)}>
+                      <Download className="h-4 w-4" />
+                    </Button>
                     <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleOpenDuplicateDialog}>
                       <Copy className="h-4 w-4" />
                     </Button>
