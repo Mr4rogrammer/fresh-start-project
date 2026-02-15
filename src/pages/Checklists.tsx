@@ -1179,7 +1179,60 @@ const Checklists = () => {
 
                {/* Items */}
               <div className="flex-1 overflow-y-auto p-4 md:p-6">
-               
+                
+                {/* Add Item Section */}
+                <div className="mb-6 space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={newItemText}
+                      onChange={(e) => setNewItemText(e.target.value)}
+                      placeholder="Add a new item..."
+                      className="h-11 text-base flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddItem();
+                        }
+                      }}
+                    />
+                    <Select value={newItemType} onValueChange={(v) => setNewItemType(v as ChecklistItemType)}>
+                      <SelectTrigger className="w-[130px] h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="checkbox">
+                          <span className="flex items-center gap-2"><CheckSquare className="h-3.5 w-3.5" /> Checkbox</span>
+                        </SelectItem>
+                        <SelectItem value="text">
+                          <span className="flex items-center gap-2"><Type className="h-3.5 w-3.5" /> Text</span>
+                        </SelectItem>
+                        <SelectItem value="dropdown">
+                          <span className="flex items-center gap-2"><List className="h-3.5 w-3.5" /> Dropdown</span>
+                        </SelectItem>
+                        <SelectItem value="radio">
+                          <span className="flex items-center gap-2"><CircleDot className="h-3.5 w-3.5" /> Radio</span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={handleAddItem}
+                      className="h-11 px-4"
+                      disabled={!newItemText.trim()}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add
+                    </Button>
+                  </div>
+                  {(newItemType === 'dropdown' || newItemType === 'radio') && (
+                    <Input
+                      value={newItemOptions}
+                      onChange={(e) => setNewItemOptions(e.target.value)}
+                      placeholder="Options (comma-separated, e.g. Yes, No, Maybe)"
+                      className="h-10 text-sm"
+                    />
+                  )}
+                </div>
+
                 {/* Checklist items */}
                 <div className="space-y-2">
                   {selectedChecklist.items.length === 0 ? (
