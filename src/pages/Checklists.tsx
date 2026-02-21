@@ -616,6 +616,19 @@ const Checklists = () => {
     }
   };
 
+  // Sanitize items for Firebase (convert undefined to null)
+  const sanitizeItems = (items: ChecklistItem[]): any[] => {
+    return items.map(item => ({
+      id: item.id,
+      text: item.text,
+      completed: item.completed,
+      children: item.children ? sanitizeItems(item.children) : [],
+      type: item.type || 'checkbox',
+      options: item.options || null,
+      value: item.value || '',
+    }));
+  };
+
   const updateChecklist = async (updatedChecklist: Checklist) => {
     if (!user) return;
 
@@ -623,7 +636,7 @@ const Checklists = () => {
       const checklistRef = ref(db, `users/${user.uid}/checklists/${updatedChecklist.id}`);
       await update(checklistRef, {
         title: updatedChecklist.title,
-        items: updatedChecklist.items,
+        items: sanitizeItems(updatedChecklist.items),
         updatedAt: new Date().toISOString(),
       });
 
