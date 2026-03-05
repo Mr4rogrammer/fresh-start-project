@@ -56,15 +56,26 @@ const Dashboard = () => {
     return cached ? parseFloat(cached) : 83.5;
   });
 
-  // Fetch live USD→INR rate
+  // Fetch live USD→INR rate with 24h cache
   useEffect(() => {
+    const CACHE_KEY = "usd-inr-rate";
+    const CACHE_TS_KEY = "usd-inr-rate-ts";
+    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
     const fetchRate = async () => {
+      // Check if cached rate is still fresh
+      const cachedTs = localStorage.getItem(CACHE_TS_KEY);
+      if (cachedTs && Date.now() - parseInt(cachedTs) < CACHE_DURATION) {
+        return; // Cache is still valid, skip fetch
+      }
+
       try {
         const res = await fetch("https://open.er-api.com/v6/latest/USD");
         const data = await res.json();
         if (data?.rates?.INR) {
           setInrRate(data.rates.INR);
-          localStorage.setItem("usd-inr-rate", String(data.rates.INR));
+          localStorage.setItem(CACHE_KEY, String(data.rates.INR));
+          localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
         }
       } catch (err) {
         console.warn("Failed to fetch live exchange rate, using cached/fallback");
