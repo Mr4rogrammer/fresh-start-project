@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson } from "lucide-react";
+import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, IndianRupee, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -48,6 +48,26 @@ const Dashboard = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState<string>("");
   const shareCardRef = useRef<HTMLDivElement>(null);
+  const [currency, setCurrency] = useState<"USD" | "INR">(() => {
+    return (localStorage.getItem("dashboard-currency") as "USD" | "INR") || "USD";
+  });
+  const INR_RATE = 83.5;
+
+  const fmt = (usdAmount: number, decimals = 2) => {
+    if (currency === "INR") {
+      const inr = usdAmount * INR_RATE;
+      return `₹${inr.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+    }
+    return `$${usdAmount.toFixed(decimals)}`;
+  };
+
+  const sym = currency === "INR" ? "₹" : "$";
+
+  const toggleCurrency = () => {
+    const next = currency === "USD" ? "INR" : "USD";
+    setCurrency(next);
+    localStorage.setItem("dashboard-currency", next);
+  };
 
 
   useEffect(() => {
@@ -365,6 +385,14 @@ const Dashboard = () => {
             {/* Quick Actions */}
             <div className="flex gap-2 w-full sm:w-auto">
               <Button
+                onClick={toggleCurrency}
+                variant="outline"
+                className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 text-xs sm:text-sm h-9 sm:h-10"
+              >
+                {currency === "USD" ? <IndianRupee className="h-3 w-3 sm:h-4 sm:w-4" /> : <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />}
+                {currency === "USD" ? "INR" : "USD"}
+              </Button>
+              <Button
                 onClick={exportToCSV}
                 variant="outline"
                 className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
@@ -473,7 +501,7 @@ const Dashboard = () => {
           <div className="animate-scale-in" style={{ animationDelay: "0s" }}>
             <StatsCard
               title="Opening Balance"
-              value={`$${selectedChallenge?.openingBalance.toFixed(2) || '0.00'}`}
+              value={fmt(selectedChallenge?.openingBalance || 0)}
               variant="default"
             />
           </div>
@@ -481,9 +509,9 @@ const Dashboard = () => {
           <div className="animate-scale-in" style={{ animationDelay: "0.05s" }}>
             <StatsCard
               title="Current Balance"
-              value={`$${(((selectedChallenge?.openingBalance || 0) + netProfit) - totalFees).toFixed(2)}`}
+              value={fmt(((selectedChallenge?.openingBalance || 0) + netProfit) - totalFees)}
               variant={(netProfit > 0 ? "profit" : netProfit < 0 ? "loss" : "neutral") as "profit" | "loss" | "neutral"}
-              subtitle={`${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(2)} Net PL & -${totalFees.toFixed(2)} Fees`}
+              subtitle={`${netProfit >= 0 ? '+' : ''}${fmt(netProfit)} Net PL & -${fmt(totalFees)} Fees`}
             />
           </div>
 
@@ -492,7 +520,7 @@ const Dashboard = () => {
               title="Performance"
               value={`${netProfit >= 0 ? '+' : ''}${(((netProfit - totalFees) / (selectedChallenge?.openingBalance || 1)) * 100).toFixed(2)}%`}
               variant={netProfit > 0 ? "profit" : netProfit < 0 ? "loss" : "neutral"}
-              subtitle={`${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(2)} Net PL & -${totalFees.toFixed(2)} Fees`}
+              subtitle={`${netProfit >= 0 ? '+' : ''}${fmt(netProfit)} Net PL & -${fmt(totalFees)} Fees`}
             />
           </div>
 
@@ -557,7 +585,7 @@ const Dashboard = () => {
                 <YAxis
                   stroke="hsl(var(--muted-foreground))"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `${sym}${value}`}
                   width={50}
                 />
                 <Tooltip
@@ -570,8 +598,8 @@ const Dashboard = () => {
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                   }}
                   formatter={(value: number, name: string) => {
-                    if (name === 'balance') return [`$${value.toFixed(2)}`, 'Balance'];
-                    if (name === 'profit') return [`$${value >= 0 ? '+' : ''}${value.toFixed(2)}`, 'Daily P&L'];
+                    if (name === 'balance') return [fmt(value), 'Balance'];
+                    if (name === 'profit') return [`${value >= 0 ? '+' : ''}${fmt(value)}`, 'Daily P&L'];
                     if (name === 'trades') return [`${value} trade${value !== 1 ? 's' : ''}`, 'Trades'];
                     return value;
                   }}
@@ -597,7 +625,7 @@ const Dashboard = () => {
                 <YAxis
                   stroke="hsl(var(--muted-foreground))"
                   tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `${sym}${value}`}
                 />
                 <Tooltip
                   contentStyle={{
@@ -608,8 +636,8 @@ const Dashboard = () => {
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                   }}
                   formatter={(value: number, name: string) => {
-                    if (name === 'balance') return [`$${value.toFixed(2)}`, 'Balance'];
-                    if (name === 'profit') return [`$${value >= 0 ? '+' : ''}${value.toFixed(2)}`, 'Daily P&L'];
+                    if (name === 'balance') return [fmt(value), 'Balance'];
+                    if (name === 'profit') return [`${value >= 0 ? '+' : ''}${fmt(value)}`, 'Daily P&L'];
                     if (name === 'trades') return [`${value} trade${value !== 1 ? 's' : ''}`, 'Trades'];
                     return value;
                   }}
@@ -661,7 +689,7 @@ const Dashboard = () => {
                   return (
                     <>
                       <p className="text-3xl font-bold text-profit mb-2">
-                        ${bestProfit > 0 ? `+${bestProfit.toFixed(2)}` : "0.00"}
+                        {bestProfit > 0 ? `+${fmt(bestProfit)}` : fmt(0)}
                       </p>
                       <p className="text-muted-foreground">
                         {new Date(bestDay).toLocaleDateString('en-US', {
@@ -692,7 +720,7 @@ const Dashboard = () => {
                   "text-2xl sm:text-3xl font-bold mb-1 sm:mb-2",
                   netProfit / totalTrades > 0 ? "text-profit" : "text-loss"
                 )}>
-                  {netProfit / totalTrades >= 0 ? '+' : ''}${(netProfit / totalTrades).toFixed(2)}
+                  {netProfit / totalTrades >= 0 ? '+' : ''}{fmt(netProfit / totalTrades)}
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   Per trade
