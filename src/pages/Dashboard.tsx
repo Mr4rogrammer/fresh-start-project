@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, IndianRupee, DollarSign } from "lucide-react";
+import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, IndianRupee, DollarSign, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -56,33 +56,37 @@ const Dashboard = () => {
     return cached ? parseFloat(cached) : 83.5;
   });
 
-  // Fetch live USD→INR rate with 24h cache
-  useEffect(() => {
+  const [refreshingRate, setRefreshingRate] = useState(false);
+
+  const fetchExchangeRate = async (force = false) => {
     const CACHE_KEY = "usd-inr-rate";
     const CACHE_TS_KEY = "usd-inr-rate-ts";
-    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+    const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
-    const fetchRate = async () => {
-      // Check if cached rate is still fresh
+    if (!force) {
       const cachedTs = localStorage.getItem(CACHE_TS_KEY);
-      if (cachedTs && Date.now() - parseInt(cachedTs) < CACHE_DURATION) {
-        return; // Cache is still valid, skip fetch
-      }
+      if (cachedTs && Date.now() - parseInt(cachedTs) < CACHE_DURATION) return;
+    }
 
-      try {
-        const res = await fetch("https://open.er-api.com/v6/latest/USD");
-        const data = await res.json();
-        if (data?.rates?.INR) {
-          setInrRate(data.rates.INR);
-          localStorage.setItem(CACHE_KEY, String(data.rates.INR));
-          localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
-        }
-      } catch (err) {
-        console.warn("Failed to fetch live exchange rate, using cached/fallback");
+    setRefreshingRate(true);
+    try {
+      const res = await fetch("https://open.er-api.com/v6/latest/USD");
+      const data = await res.json();
+      if (data?.rates?.INR) {
+        setInrRate(data.rates.INR);
+        localStorage.setItem(CACHE_KEY, String(data.rates.INR));
+        localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
+        if (force) toast.success(`Rate updated: 1 USD = ₹${data.rates.INR.toFixed(2)}`);
       }
-    };
-    fetchRate();
-  }, []);
+    } catch (err) {
+      console.warn("Failed to fetch live exchange rate, using cached/fallback");
+      if (force) toast.error("Failed to refresh rate");
+    } finally {
+      setRefreshingRate(false);
+    }
+  };
+
+  useEffect(() => { fetchExchangeRate(); }, []);
 
   const fmt = (usdAmount: number, decimals = 2) => {
     if (currency === "INR") {
@@ -425,9 +429,19 @@ const Dashboard = () => {
                   {currency === "USD" ? "INR" : "USD"}
                 </Button>
                 {currency === "INR" && (
-                  <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-                    1 USD = ₹{inrRate.toFixed(2)}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                      1 USD = ₹{inrRate.toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => fetchExchangeRate(true)}
+                      disabled={refreshingRate}
+                      className="text-muted-foreground hover:text-primary transition-colors p-0.5"
+                      title="Refresh exchange rate"
+                    >
+                      <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
+                    </button>
+                  </div>
                 )}
               </div>
               <Button
