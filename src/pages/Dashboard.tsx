@@ -51,11 +51,31 @@ const Dashboard = () => {
   const [currency, setCurrency] = useState<"USD" | "INR">(() => {
     return (localStorage.getItem("dashboard-currency") as "USD" | "INR") || "USD";
   });
-  const INR_RATE = 83.5;
+  const [inrRate, setInrRate] = useState<number>(() => {
+    const cached = localStorage.getItem("usd-inr-rate");
+    return cached ? parseFloat(cached) : 83.5;
+  });
+
+  // Fetch live USD→INR rate
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await fetch("https://open.er-api.com/v6/latest/USD");
+        const data = await res.json();
+        if (data?.rates?.INR) {
+          setInrRate(data.rates.INR);
+          localStorage.setItem("usd-inr-rate", String(data.rates.INR));
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live exchange rate, using cached/fallback");
+      }
+    };
+    fetchRate();
+  }, []);
 
   const fmt = (usdAmount: number, decimals = 2) => {
     if (currency === "INR") {
-      const inr = usdAmount * INR_RATE;
+      const inr = usdAmount * inrRate;
       return `₹${inr.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
     }
     return `$${usdAmount.toFixed(decimals)}`;
