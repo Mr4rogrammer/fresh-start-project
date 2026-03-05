@@ -404,14 +404,21 @@ const Dashboard = () => {
 
             {/* Quick Actions */}
             <div className="flex gap-2 w-full sm:w-auto">
-              <Button
-                onClick={toggleCurrency}
-                variant="outline"
-                className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 text-xs sm:text-sm h-9 sm:h-10"
-              >
-                {currency === "USD" ? <IndianRupee className="h-3 w-3 sm:h-4 sm:w-4" /> : <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />}
-                {currency === "USD" ? "INR" : "USD"}
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  onClick={toggleCurrency}
+                  variant="outline"
+                  className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 text-xs sm:text-sm h-9 sm:h-10"
+                >
+                  {currency === "USD" ? <IndianRupee className="h-3 w-3 sm:h-4 sm:w-4" /> : <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />}
+                  {currency === "USD" ? "INR" : "USD"}
+                </Button>
+                {currency === "INR" && (
+                  <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                    1 USD = ₹{inrRate.toFixed(2)}
+                  </span>
+                )}
+              </div>
               <Button
                 onClick={exportToCSV}
                 variant="outline"
