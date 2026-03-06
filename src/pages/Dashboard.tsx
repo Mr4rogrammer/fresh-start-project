@@ -432,36 +432,34 @@ const Dashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="flex gap-2 w-full sm:w-auto">
-            <div className="flex items-center gap-1.5">
-                <Select value={currency} onValueChange={(val) => { setCurrency(val); localStorage.setItem("dashboard-currency", val); }}>
-                  <SelectTrigger className="w-[90px] sm:w-[120px] h-9 sm:h-10 text-xs sm:text-sm border-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
-                    {SUPPORTED_CURRENCIES.map(c => (
-                      <SelectItem key={c.code} value={c.code}>
-                        <span className="font-mono">{c.symbol}</span> {c.code}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {currency !== "USD" && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-                      1 USD = {currentCurrencyInfo.symbol}{currentRate.toFixed(2)}
-                    </span>
-                    <button
-                      onClick={() => fetchExchangeRates(true)}
-                      disabled={refreshingRate}
-                      className="text-muted-foreground hover:text-primary transition-colors p-0.5"
-                      title="Refresh exchange rates"
-                    >
-                      <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
-                    </button>
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              <Select value={currency} onValueChange={(val) => { setCurrency(val); localStorage.setItem("dashboard-currency", val); }}>
+                <SelectTrigger className="w-[100px] sm:w-[120px] h-9 sm:h-10 text-xs sm:text-sm border-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
+                  {SUPPORTED_CURRENCIES.map(c => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <span className="font-mono">{c.symbol}</span> {c.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currency !== "USD" && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                    1 USD = {currentCurrencyInfo.symbol}{currentRate.toFixed(2)}
+                  </span>
+                  <button
+                    onClick={() => fetchExchangeRates(true)}
+                    disabled={refreshingRate}
+                    className="text-muted-foreground hover:text-primary transition-colors p-0.5"
+                    title="Refresh exchange rates"
+                  >
+                    <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
+                  </button>
+                </div>
+              )}
               <Button
                 onClick={exportToCSV}
                 variant="outline"
