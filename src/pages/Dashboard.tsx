@@ -364,20 +364,21 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
 
-      <div className="max-w-7xl mx-auto p-2 sm:p-4 md:p-8 animate-fade-in">
-        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-8 animate-slide-down">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8 animate-slide-down">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-4xl font-bold mb-1 sm:mb-2">Dashboard</h1>
-              <p className="text-muted-foreground text-sm sm:text-lg">
+              <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+              <p className="text-muted-foreground text-sm mt-1">
                 Analyze your trading performance
               </p>
             </div>
 
             {/* Quick Actions */}
-            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="w-[100px] sm:w-[120px] h-9 sm:h-10 text-xs sm:text-sm border-2">
+                <SelectTrigger className="w-[100px] sm:w-[110px] h-9 sm:h-10 text-sm border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
@@ -389,43 +390,46 @@ const Dashboard = () => {
                 </SelectContent>
               </Select>
               {currency !== "USD" && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
                     1 USD = {currentCurrencyInfo.symbol}{currentRate.toFixed(2)}
                   </span>
                   <button
                     onClick={() => fetchExchangeRates(true)}
                     disabled={refreshingRate}
-                    className="text-muted-foreground hover:text-primary transition-colors p-0.5"
+                    className="text-muted-foreground hover:text-primary transition-colors p-1"
                     title="Refresh exchange rates"
                   >
-                    <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
+                    <RefreshCw className={cn("h-3.5 w-3.5", refreshingRate && "animate-spin")} />
                   </button>
                 </div>
               )}
               <Button
                 onClick={exportToCSV}
                 variant="outline"
-                className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
+                size="sm"
+                className="gap-2"
                 disabled={filteredTrades.length === 0}
               >
-                <FileDown className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Export</span> CSV
+                <FileDown className="h-4 w-4" />
+                CSV
               </Button>
               <Button
                 onClick={exportToJSON}
                 variant="outline"
-                className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 flex-1 sm:flex-none text-xs sm:text-sm h-9 sm:h-10"
+                size="sm"
+                className="gap-2"
                 disabled={filteredTrades.length === 0}
               >
-                <FileJson className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Export</span> JSON
+                <FileJson className="h-4 w-4" />
+                JSON
               </Button>
             </div>
           </div>
+        </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 p-3 sm:p-6 bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-6 bg-card/80 backdrop-blur-sm rounded-2xl border border-border/50 mb-6 sm:mb-8">
             <div className="space-y-1 sm:space-y-2 col-span-2 md:col-span-1">
               <label className="text-xs sm:text-sm font-medium">Date Range</label>
               <Popover>
@@ -506,9 +510,8 @@ const Dashboard = () => {
               </Button>
             </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8 [&>div]:min-h-[120px] sm:[&>div]:min-h-[160px]">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div className="animate-scale-in" style={{ animationDelay: "0s" }}>
             <StatsCard
               title="Opening Balance"
@@ -532,6 +535,15 @@ const Dashboard = () => {
               value={`${netProfit >= 0 ? '+' : ''}${(((netProfit - totalFees) / (selectedChallenge?.openingBalance || 1)) * 100).toFixed(2)}%`}
               variant={netProfit > 0 ? "profit" : netProfit < 0 ? "loss" : "neutral"}
               subtitle={`${netProfit >= 0 ? '+' : ''}${fmt(netProfit)} Net PL & -${fmt(totalFees)} Fees`}
+            />
+          </div>
+
+          <div className="animate-scale-in" style={{ animationDelay: "0.2s" }}>
+            <StatsCard
+              title="Total P/L"
+              value={`${(netProfit - totalFees) >= 0 ? '+' : ''}${fmt(netProfit - totalFees)}`}
+              variant={(netProfit - totalFees) > 0 ? "profit" : (netProfit - totalFees) < 0 ? "loss" : "neutral"}
+              subtitle="Current - Opening Balance"
             />
           </div>
 
@@ -566,7 +578,7 @@ const Dashboard = () => {
               title="Breakeven Trades"
               value={breakevenTrades.length}
               subtitle={`${breakevenRate}%`}
-              variant="neutral"
+              variant="breakeven"
             />
           </div>
 
@@ -582,7 +594,7 @@ const Dashboard = () => {
 
         {/* Profit Progression Chart */}
         {chartData.length > 0 && (
-          <div className="bg-card/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-6 border border-border/50 mb-4 sm:mb-8 shadow-lg hover:shadow-xl transition-shadow duration-300 animate-fade-in">
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 mb-6 sm:mb-8 shadow-lg hover:shadow-xl transition-all duration-300 animate-fade-in">
             <h3 className="text-base sm:text-xl font-semibold mb-3 sm:mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Balance Progression</h3>
             <ResponsiveContainer width="100%" height={250} className="sm:hidden">
               <LineChart data={chartData}>
@@ -598,6 +610,7 @@ const Dashboard = () => {
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
                   tickFormatter={(value) => `${sym}${value}`}
                   width={50}
+                  domain={['dataMin - 50', 'dataMax + 50']}
                 />
                 <Tooltip
                   contentStyle={{
@@ -637,6 +650,7 @@ const Dashboard = () => {
                   stroke="hsl(var(--muted-foreground))"
                   tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   tickFormatter={(value) => `${sym}${value}`}
+                  domain={['dataMin - 50', 'dataMax + 50']}
                 />
                 <Tooltip
                   contentStyle={{
@@ -673,8 +687,8 @@ const Dashboard = () => {
         )}
 
         {/* Additional Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
-          <div className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 sm:p-6 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <span className="text-2xl">🏆</span>
               Best Day

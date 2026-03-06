@@ -22,7 +22,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
@@ -68,6 +68,7 @@ export default {
           DEFAULT: "hsl(var(--loss))",
           light: "hsl(var(--loss-light))",
         },
+        breakeven: "hsl(var(--breakeven))",
         neutral: "hsl(var(--neutral))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

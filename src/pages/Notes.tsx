@@ -127,15 +127,15 @@ const Notes = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-mesh">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 animate-fade-in">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 animate-slide-down">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">My Notes</h1>
-            <p className="text-muted-foreground mt-1">Capture your trading insights</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">My Notes</h1>
+            <p className="text-muted-foreground text-sm mt-1">Capture your trading insights and learnings</p>
           </div>
-          <Button onClick={() => setIsFormOpen(true)} className="gap-2 hover:scale-105 transition-all shadow-lg hover:shadow-xl hover:shadow-primary/20">
+          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
             Add Note
           </Button>
@@ -153,7 +153,7 @@ const Notes = () => {
         </div>
 
         {/* Notes List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {notes.length === 0 ? (
             <div className="col-span-full text-center py-16 animate-fade-in">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-4">
@@ -172,8 +172,8 @@ const Notes = () => {
             filteredNotes.map((note, index) => (
               <Card
                 key={note.id}
-                className="animate-fade-in hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 hover:-translate-y-1 bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50"
-                style={{ animationDelay: `${index * 0.05}s` }}
+                className="animate-fade-in hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-card/80 backdrop-blur-sm border-border/50 hover:border-primary/30"
+                style={{ animationDelay: `${index * 0.03}s` }}
               >
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-2 line-clamp-1">{note.title || "Untitled Note"}</h3>

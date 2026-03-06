@@ -1,23 +1,30 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trade } from "@/types/trade";
-import { Trash2, Edit } from "lucide-react";
+import { Trade, Journal } from "@/types/trade";
+import { Trash2, Edit, Expand, Plus, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus } from "lucide-react";
+import { useState } from "react";
+import { ImageViewerModal } from "@/components/ImageViewerModal";
+import { DriveImage } from "@/components/DriveImage";
 
 interface TradeModalProps {
   open: boolean;
   onClose: () => void;
   trades: Trade[];
+  journals?: Journal[];
   date: string;
   onDelete: (tradeId: string) => void;
   onEdit: (trade: Trade) => void;
   openAddTrade: () => void;
+  openAddJournal?: () => void;
+  onDeleteJournal?: (journalId: string) => void;
+  onEditJournal?: (journal: Journal) => void;
   readOnly?: boolean;
   formatCurrency?: (amount: number, decimals?: number) => string;
 }
 
-export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, openAddTrade, readOnly = false, formatCurrency }: TradeModalProps) => {
+export const TradeModal = ({ open, onClose, trades, journals = [], date, onDelete, onEdit, openAddTrade, openAddJournal, onDeleteJournal, onEditJournal, readOnly = false, formatCurrency }: TradeModalProps) => {
+  const [viewingImage, setViewingImage] = useState<{ fileId?: string; url?: string; title?: string } | null>(null);
   const totalProfit = trades.reduce((sum, trade) => sum + trade.profit, 0);
   const isProfit = totalProfit > 0;
 
@@ -54,17 +61,31 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
             })}
           </DialogTitle>
           <div className="flex items-center justify-between gap-4">
-            <div className={`text-xl font-bold ${isProfit ? 'text-profit' : 'text-loss'}`}>
-              Total: {isProfit ? '+' : ''}{fmt(totalProfit)}
+            <div className={`text-xl font-bold ${trades.length > 0 ? (isProfit ? 'text-profit' : 'text-loss') : 'text-muted-foreground'}`}>
+              {trades.length > 0 ? `Total: ${isProfit ? '+' : ''}${fmt(totalProfit)}` : 'No trades'}
             </div>
             {!readOnly && (
-              <Button
-                onClick={() => { openAddTrade(); }}
-                className="gap-2 transition-all hover:scale-105"
-              >
-                <Plus className="h-5 w-5" />
-                Add Trade
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => { openAddTrade(); }}
+                  className="gap-2 transition-all hover:scale-105"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  Trade
+                </Button>
+                {openAddJournal && (
+                  <Button
+                    onClick={() => { openAddJournal(); }}
+                    variant="outline"
+                    className="gap-2 transition-all hover:scale-105 hover:bg-blue-500/10 hover:border-blue-500/50"
+                    size="sm"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Journal
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </DialogHeader>
@@ -129,14 +150,6 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
                       {trade.profit >= 0 ? '+' : ''}{fmt(trade.profit)}
                     </span>
                   </div>
-                  {trade.link?.trim() && (
-                    <div>
-                      <span className="text-muted-foreground">Link:</span>
-                      <a href={trade.link} target="_blank" rel="noopener noreferrer" className="ml-2 font-medium text-profit underline">
-                        "Open Link In New Tab"
-                      </a>
-                    </div>
-                  )}
                 </div>
 
                 {trade.notes && (
@@ -145,15 +158,121 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
                   </div>
                 )}
 
-                {trade.screenshotUrl && (
-                  <div className="mt-3">
-                    <img src={trade.screenshotUrl} alt="Trade screenshot" className="rounded-lg w-full" />
+                {(trade.screenshotFileId || trade.screenshotUrl) && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <div className="relative group cursor-pointer" onClick={() => setViewingImage({
+                      fileId: trade.screenshotFileId,
+                      url: trade.screenshotUrl,
+                      title: `${trade.pair} - ${trade.date}`
+                    })}>
+                      <DriveImage
+                        fileId={trade.screenshotFileId}
+                        fallbackUrl={trade.screenshotUrl}
+                        alt="Trade screenshot"
+                        className="rounded-lg w-full h-48 object-cover hover:opacity-90 transition-opacity"
+                      />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setViewingImage({
+                              fileId: trade.screenshotFileId,
+                              url: trade.screenshotUrl,
+                              title: `${trade.pair} - ${trade.date}`
+                            });
+                          }}
+                        >
+                          <Expand className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
             ))}
+
+            {/* Journal Entries */}
+            {journals.length > 0 && (
+              <>
+                {trades.length > 0 && (
+                  <div className="flex items-center gap-2 mt-6 mb-3">
+                    <BookOpen className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium text-blue-500">Journal Entries</span>
+                  </div>
+                )}
+                {journals.map((journal) => (
+                  <div key={journal.id} className="bg-blue-500/5 rounded-xl p-4 border border-blue-500/20">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium text-blue-500">Journal Entry</span>
+                      </div>
+                      {!readOnly && onDeleteJournal && onEditJournal && (
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => onEditJournal(journal)} className="h-8 w-8">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => journal.id && onDeleteJournal(journal.id)} className="h-8 w-8 text-loss hover:text-loss">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {journal.notes && (
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{journal.notes}</p>
+                    )}
+
+                    {(journal.screenshotFileId || journal.screenshotUrl) && (
+                      <div className="mt-3 pt-3 border-t border-blue-500/20">
+                        <div className="relative group cursor-pointer" onClick={() => setViewingImage({
+                          fileId: journal.screenshotFileId,
+                          url: journal.screenshotUrl,
+                          title: `Journal - ${journal.date}`
+                        })}>
+                          <DriveImage
+                            fileId={journal.screenshotFileId}
+                            fallbackUrl={journal.screenshotUrl}
+                            alt="Journal screenshot"
+                            className="rounded-lg w-full h-48 object-cover hover:opacity-90 transition-opacity"
+                          />
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="h-8 w-8 bg-background/80 backdrop-blur-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingImage({
+                                  fileId: journal.screenshotFileId,
+                                  url: journal.screenshotUrl,
+                                  title: `Journal - ${journal.date}`
+                                });
+                              }}
+                            >
+                              <Expand className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </ScrollArea>
+
+        <ImageViewerModal
+          open={!!viewingImage}
+          onClose={() => setViewingImage(null)}
+          fileId={viewingImage?.fileId}
+          imageUrl={viewingImage?.url}
+          title={viewingImage?.title}
+        />
       </DialogContent>
     </Dialog>
   );

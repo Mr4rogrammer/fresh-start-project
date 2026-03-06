@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Calendar } from "lucide-react";
+import { TrendingUp, Shield, BarChart3 } from "lucide-react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -29,48 +29,54 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+          <div className="absolute inset-0 w-12 h-12 rounded-full bg-primary/20 blur-xl animate-pulse" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background orbs */}
+    <div className="min-h-screen bg-gradient-mesh flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background - softer, calmer */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/30 rounded-full blur-3xl animate-glow"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/30 rounded-full blur-3xl animate-glow" style={{ animationDelay: "1s" }}></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-primary-glow/20 rounded-full blur-2xl animate-glow" style={{ animationDelay: "2s" }}></div>
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-glow"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent/15 rounded-full blur-[100px] animate-glow" style={{ animationDelay: "1.5s" }}></div>
       </div>
 
       <div className="max-w-md w-full space-y-8 animate-fade-in relative z-10">
-        <div className="text-center animate-slide-down">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-primary mb-8 animate-scale-in shadow-glow-primary">
-            <Calendar className="h-12 w-12 text-primary-foreground" />
+        {/* Header */}
+        <div className="text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-primary shadow-glow-primary animate-scale-in">
+            <TrendingUp className="h-10 w-10 text-primary-foreground" />
           </div>
-          <h1 className="text-6xl font-bold mb-4 gradient-text animate-fade-in">
-            Tradeify
-          </h1>
-          <p className="text-muted-foreground text-xl animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            Professional Trading Journal
-          </p>
+          <div className="space-y-2">
+            <h1 className="text-5xl font-bold gradient-text">
+              Tradeify
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Your mindful trading companion
+            </p>
+          </div>
         </div>
 
-        <div className="glass-strong rounded-3xl p-10 space-y-8 animate-scale-in shadow-elegant-xl hover:shadow-glow-primary transition-shadow duration-500" style={{ animationDelay: "0.2s" }}>
-          <div className="space-y-3 text-center">
-            <h2 className="text-4xl font-bold gradient-text">Welcome Back</h2>
-            <p className="text-muted-foreground text-lg">
-              Sign in to start tracking your trades
+        {/* Sign in card */}
+        <div className="bg-card/90 backdrop-blur-xl rounded-2xl p-8 border border-border/50 shadow-xl space-y-6 animate-scale-in" style={{ animationDelay: "0.1s" }}>
+          <div className="space-y-2 text-center">
+            <h2 className="text-2xl font-semibold text-foreground">Welcome</h2>
+            <p className="text-muted-foreground">
+              Sign in to continue your trading journey
             </p>
           </div>
 
           <Button
             onClick={handleGoogleSignIn}
-            variant="gradient"
-            className="w-full gap-3 h-16 text-lg"
+            variant="outline"
+            className="w-full gap-3 h-12 text-base font-medium hover:bg-muted/50 border-2"
             size="lg"
           >
-            <svg className="w-6 h-6" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
                 fill="currentColor"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -91,18 +97,32 @@ const Auth = () => {
             Continue with Google
           </Button>
 
-          <div className="text-center text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: "0.3s" }}>
-            <div className="flex items-center justify-center gap-3">
-              <div className="h-px flex-1 bg-border"></div>
-              <p>Your data is securely stored and private</p>
-              <div className="h-px flex-1 bg-border"></div>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border/50"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-3 bg-card text-muted-foreground">Secure & Private</span>
+            </div>
+          </div>
+
+          {/* Features */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/30 border border-border/30">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <span className="text-xs text-muted-foreground">Track Progress</span>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/30 border border-border/30">
+              <Shield className="h-4 w-4 text-primary" />
+              <span className="text-xs text-muted-foreground">Data Protected</span>
             </div>
           </div>
         </div>
 
-        <div className="text-center text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: "0.4s" }}>
-          <p>By continuing, you agree to track your trading journey</p>
-        </div>
+        {/* Footer */}
+        <p className="text-center text-sm text-muted-foreground animate-fade-in" style={{ animationDelay: "0.2s" }}>
+          Focus on the process, not just the profits
+        </p>
       </div>
     </div>
   );

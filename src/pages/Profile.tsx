@@ -238,40 +238,50 @@ const Profile = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <div className="min-h-screen bg-gradient-mesh">
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 animate-fade-in">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 animate-slide-down">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in">
+        <div className="flex flex-col gap-4 mb-6 sm:mb-8 animate-slide-down">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            className="gap-2 w-fit"
+            size="sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
           <div>
-            <Button
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              className="gap-2 mb-3"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-5xl font-bold gradient-text mb-2">Profile Settings</h1>
-            <p className="text-muted-foreground text-lg">Manage your account, security and appearance</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1">Profile Settings</h1>
+            <p className="text-muted-foreground text-sm">Manage your account, security and appearance</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* User Info Card with 2-Step Verification */}
-          <Card className="glass hover-lift animate-fade-in border-2">
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow animate-fade-in">
             <CardHeader>
-              <CardTitle className="text-2xl gradient-text">Account Information</CardTitle>
+              <CardTitle className="text-xl">Account Information</CardTitle>
               <CardDescription>Your account details and security</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4 pb-6 border-b border-border/50">
                 <div className="relative">
-                  <img
-                    src={user.photoURL || "https://via.placeholder.com/80"}
-                    alt="Profile"
-                    className="w-20 h-20 rounded-full ring-4 ring-primary/30 shadow-glow-primary"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-gradient-primary rounded-full border-2 border-background"></div>
+                  <div className="w-20 h-20 rounded-full ring-4 ring-primary/30 overflow-hidden bg-primary/10 flex items-center justify-center">
+                    {user.photoURL ? (
+                      <img
+                        src={user.photoURL}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <span className="text-2xl font-bold text-primary">
+                        {user.displayName?.charAt(0)?.toUpperCase() || "U"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary rounded-full border-2 border-background"></div>
                 </div>
                 <div>
                   <p className="text-xl font-semibold">{user.displayName}</p>

@@ -1,6 +1,6 @@
 import { DayData } from "@/types/trade";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, BookOpen } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -25,13 +25,17 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false, form
     return <div className="aspect-square min-h-0" />;
   }
 
-  const hasData = dayData && dayData.tradeCount > 0;
-  const isProfit = hasData && dayData.totalProfit > 0;
-  const isLoss = hasData && dayData.totalProfit < 0;
+  const hasTrades = dayData && dayData.tradeCount > 0;
+  const hasJournals = dayData && dayData.journals && dayData.journals.length > 0;
+  const hasData = hasTrades || hasJournals;
+  const isJournalOnly = hasJournals && !hasTrades;
+  const hasBoth = hasTrades && hasJournals;
+  const isProfit = hasTrades && dayData.totalProfit > 0;
+  const isLoss = hasTrades && dayData.totalProfit < 0;
 
-  const winCount = hasData ? dayData.trades.filter(t => t.profit > 0).length : 0;
-  const lossCount = hasData ? dayData.trades.filter(t => t.profit < 0).length : 0;
-  const pairs = hasData ? [...new Set(dayData.trades.map(t => t.pair))].slice(0, 3) : [];
+  const winCount = hasTrades ? dayData.trades.filter(t => t.profit > 0).length : 0;
+  const lossCount = hasTrades ? dayData.trades.filter(t => t.profit < 0).length : 0;
+  const pairs = hasTrades ? [...new Set(dayData.trades.map(t => t.pair))].slice(0, 3) : [];
 
   const dayButton = (
     <button
@@ -40,9 +44,10 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false, form
         "group relative w-full h-full min-h-0 rounded-xl sm:rounded-2xl p-1.5 sm:p-3 md:p-4 transition-all duration-300",
         "flex flex-col items-center justify-center gap-0.5 sm:gap-1",
         "cursor-pointer active:scale-[0.97]",
-        isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background animate-border-shimmer",
+        isToday && "ring-2 ring-primary/70 ring-offset-2 ring-offset-background",
         isProfit && "calendar-day-profit",
         isLoss && "calendar-day-loss",
+        isJournalOnly && "bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 hover:border-blue-500/30",
         !hasData && "bg-card/40 border border-border/30 hover:bg-card/60 hover:border-border/50"
       )}
     >
@@ -53,7 +58,16 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false, form
         {dayNumber}
       </span>
 
-      {hasData && (
+      {/* Journal indicator badge when day has both trades and journals */}
+      {hasBoth && (
+        <div className="absolute top-2 right-2 sm:top-2.5 sm:right-2.5">
+          <div className="bg-blue-500 rounded-full p-0.5 sm:p-1 shadow-sm">
+            <BookOpen className="h-2 w-2 sm:h-2.5 sm:w-2.5 text-white" />
+          </div>
+        </div>
+      )}
+
+      {hasTrades && (
         <>
           <div className="flex items-center gap-0.5 sm:gap-1">
             {isProfit ? (
@@ -69,9 +83,18 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false, form
               {isProfit ? '+' : '-'}{fmtAmt(dayData.totalProfit)}
             </span>
           </div>
-          
-          <span className="text-[8px] sm:text-xs text-muted-foreground font-medium hidden xs:block">
-            {dayData.tradeCount} {dayData.tradeCount === 1 ? 'trade' : 'trades'}
+
+          <div className="flex items-center gap-1 text-[8px] sm:text-xs text-muted-foreground font-medium hidden xs:block">
+            <span>{dayData.tradeCount} {dayData.tradeCount === 1 ? 'trade' : 'trades'}</span>
+          </div>
+        </>
+      )}
+
+      {isJournalOnly && (
+        <>
+          <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+          <span className="text-[8px] sm:text-xs text-blue-500/80 font-medium">
+            {dayData.journals.length} {dayData.journals.length === 1 ? 'note' : 'notes'}
           </span>
         </>
       )}
@@ -116,6 +139,15 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false, form
               <div className="pt-1 border-t border-border/30">
                 <span className="text-xs text-muted-foreground">Pairs: </span>
                 <span className="text-xs font-medium">{pairs.join(', ')}</span>
+              </div>
+            )}
+
+            {hasBoth && (
+              <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
+                <BookOpen className="h-3 w-3 text-blue-500" />
+                <span className="text-xs text-blue-500">
+                  {dayData.journals.length} {dayData.journals.length === 1 ? 'journal' : 'journals'}
+                </span>
               </div>
             )}
           </div>

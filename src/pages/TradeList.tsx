@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useChallenge } from "@/contexts/ChallengeContext";
 import { useData } from "@/contexts/DataContext";
-import { Trade } from "@/types/trade";
+import { Trade, Journal } from "@/types/trade";
 import { Navbar } from "@/components/Navbar";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -14,23 +14,26 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, RefreshCw } from "lucide-react";
+import { CalendarIcon, RefreshCw, ImageIcon, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 import { useCurrency, SUPPORTED_CURRENCIES } from "@/hooks/useCurrency";
+import { ImageViewerModal } from "@/components/ImageViewerModal";
 
 const TradeList = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { selectedChallenge } = useChallenge();
-  const { getTrades } = useData();
+  const { getTrades, getJournals } = useData();
   const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
+  const [filteredJournals, setFilteredJournals] = useState<Journal[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [directionFilter, setDirectionFilter] = useState<string>("all");
   const [profitFilter, setProfitFilter] = useState<string>("all");
+  const [viewingImage, setViewingImage] = useState<{ fileId?: string; url?: string; title?: string } | null>(null);
 
   const {
     currency,
@@ -118,15 +121,18 @@ const TradeList = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-mesh">
       <Navbar />
-      <div className="container mx-auto p-2 sm:p-4 md:p-6 animate-fade-in">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-fade-in">
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold">Trade List</h1>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Trade List</h1>
+              <p className="text-muted-foreground text-sm mt-1">Review your trading history</p>
+            </div>
+            <div className="flex items-center gap-3">
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="w-[80px] sm:w-[110px] h-8 sm:h-9 text-xs sm:text-sm border">
+                <SelectTrigger className="w-[100px] sm:w-[120px] h-9 text-sm border-2">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
@@ -138,16 +144,16 @@ const TradeList = () => {
                 </SelectContent>
               </Select>
               {currency !== "USD" && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
                     1 USD = {currentCurrencyInfo.symbol}{currentRate.toFixed(2)}
                   </span>
                   <button
                     onClick={() => fetchExchangeRates(true)}
                     disabled={refreshingRate}
-                    className="text-muted-foreground hover:text-primary transition-colors p-0.5"
+                    className="text-muted-foreground hover:text-primary transition-colors p-1 rounded-md hover:bg-muted/50"
                   >
-                    <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
+                    <RefreshCw className={cn("h-3.5 w-3.5", refreshingRate && "animate-spin")} />
                   </button>
                 </div>
               )}
@@ -155,7 +161,7 @@ const TradeList = () => {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 bg-card rounded-lg border">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 p-4 sm:p-5 bg-card/80 backdrop-blur-sm rounded-2xl border border-border/50">
             <div className="col-span-2 sm:col-span-1">
               <label className="text-xs sm:text-sm font-medium mb-1 sm:mb-2 block">Date Range</label>
               <Popover>
@@ -258,13 +264,12 @@ const TradeList = () => {
                       </span>
                     </div>
                     <span
-                      className={`font-bold text-sm ${
-                        trade.profit > 0
-                          ? "text-profit"
-                          : trade.profit < 0
-                            ? "text-loss"
-                            : "text-muted-foreground"
-                      }`}
+                      className={cn(
+                        "font-bold text-sm font-mono",
+                        trade.profit > 0 && "text-profit",
+                        trade.profit < 0 && "text-loss/80",
+                        trade.profit === 0 && "text-breakeven"
+                      )}
                     >
                       {trade.profit > 0 ? '+' : ''}{fmt(trade.profit)}
                     </span>
@@ -323,7 +328,7 @@ const TradeList = () => {
                   <TableHead>Profit/Loss</TableHead>
                   <TableHead>Risk Reward</TableHead>
                   <TableHead>Notes</TableHead>
-                  <TableHead>Link</TableHead>
+                  <TableHead className="w-20 text-center">Image</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -355,24 +360,35 @@ const TradeList = () => {
                       <TableCell>{fmt(trade.fees)}</TableCell>
                       <TableCell>
                         <span
-                          className={`font-semibold ${trade.profit > 0
-                            ? "text-profit"
-                            : trade.profit < 0
-                              ? "text-loss"
-                              : "text-muted-foreground"
-                            }`}
+                          className={cn(
+                            "font-semibold font-mono",
+                            trade.profit > 0 && "text-profit",
+                            trade.profit < 0 && "text-loss/80",
+                            trade.profit === 0 && "text-breakeven"
+                          )}
                         >
-                          {fmt(trade.profit)}
+                          {trade.profit > 0 ? '+' : ''}{fmt(trade.profit)}
                         </span>
                       </TableCell>
                       <TableCell>{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</TableCell>
                       <TableCell className="max-w-xs truncate">{trade.notes || "-"}</TableCell>
-                      <TableCell onClick={() => trade.link && trade.link.trim() !== "" && trade.link.includes("https") && window.open(trade.link, "_blank")}>
-                        <span
-                          className={`font-semibold cursor-pointer ${trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "text-profit" : "text-muted-foreground"}`}
-                        >
-                          {trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "Open" : "-"}
-                        </span>
+                      <TableCell className="text-center">
+                        {(trade.screenshotFileId || trade.screenshotUrl) ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-profit hover:text-profit hover:bg-profit/10"
+                            onClick={() => setViewingImage({
+                              fileId: trade.screenshotFileId,
+                              url: trade.screenshotUrl,
+                              title: `${trade.pair} - ${trade.date}`
+                            })}
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -388,6 +404,14 @@ const TradeList = () => {
           onVerify={handleVerificationSuccess}
           title="Verify to Continue"
           description="Enter your 6-digit code to confirm this action"
+        />
+
+        <ImageViewerModal
+          open={!!viewingImage}
+          onClose={() => setViewingImage(null)}
+          fileId={viewingImage?.fileId}
+          imageUrl={viewingImage?.url}
+          title={viewingImage?.title}
         />
       </div>
     </div>

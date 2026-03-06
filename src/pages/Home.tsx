@@ -229,7 +229,7 @@ const Home = () => {
     <div className="min-h-screen bg-gradient-mesh">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 animate-fade-in">
           <div>
@@ -369,36 +369,36 @@ const Home = () => {
                         </div>
                         <div className={cn(
                           "text-base font-bold font-mono",
-                          isProfit ? "text-profit" : "text-loss"
+                          isProfit ? "text-profit" : "text-loss/80"
                         )}>
                           ${((challenge.currentBalance || challenge.openingBalance) - challenge.totalFees).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </div>
                       </div>
                     </div>
 
-                    {/* Performance Badge */}
+                    {/* Performance Badge - Psychology optimized */}
                     <div className={cn(
-                      "flex items-center justify-between p-3 rounded-xl",
-                      isProfit ? "bg-profit/10 border border-profit/20" : "bg-loss/10 border border-loss/20"
+                      "flex items-center justify-between p-3 rounded-xl transition-colors",
+                      isProfit ? "bg-profit/8 border border-profit/15" : "bg-loss/5 border border-loss/10"
                     )}>
                       <div className="flex items-center gap-2">
                         {isProfit ? (
                           <TrendingUp className="h-4 w-4 text-profit" />
                         ) : (
-                          <TrendingDown className="h-4 w-4 text-loss" />
+                          <TrendingDown className="h-4 w-4 text-loss/70" />
                         )}
                         <span className="text-xs font-medium text-muted-foreground">Performance</span>
                       </div>
                       <div className="text-right">
                         <div className={cn(
                           "text-sm font-bold font-mono",
-                          isProfit ? "text-profit" : "text-loss"
+                          isProfit ? "text-profit" : "text-loss/80"
                         )}>
                           {isProfit ? "+" : ""}{profitLossPercent}%
                         </div>
                         <div className={cn(
                           "text-xs font-medium font-mono",
-                          isProfit ? "text-profit/70" : "text-loss/70"
+                          isProfit ? "text-profit/70" : "text-loss/60"
                         )}>
                           {isProfit ? "+" : ""}${Math.abs(profitLoss).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </div>

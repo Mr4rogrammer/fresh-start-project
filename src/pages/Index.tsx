@@ -3,12 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { ref, push, remove, update } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import { deleteFromGoogleDrive } from "@/lib/googleDrive";
 import { useChallenge } from "@/contexts/ChallengeContext";
 import { useData } from "@/contexts/DataContext";
-import { Trade, DayData } from "@/types/trade";
+import { Trade, DayData, Journal } from "@/types/trade";
 import { CalendarDay } from "@/components/CalendarDay";
 import { TradeModal } from "@/components/TradeModal";
 import { AddTradeModal } from "@/components/AddTradeModal";
+import { AddJournalModal } from "@/components/AddJournalModal";
+import { AddEntryDialog } from "@/components/AddEntryDialog";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,14 +31,17 @@ import { useCurrency, SUPPORTED_CURRENCIES } from "@/hooks/useCurrency";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, getAccessToken } = useAuth();
   const { selectedChallenge } = useChallenge();
-  const { getTrades, updateLocalTrades } = useData();
+  const { getTrades, getJournals, updateLocalTrades, updateLocalJournals } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isJournalModalOpen, setIsJournalModalOpen] = useState(false);
+  const [isEntryDialogOpen, setIsEntryDialogOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
+  const [editingJournal, setEditingJournal] = useState<Journal | null>(null);
 
   const {
     currency,
@@ -73,6 +79,32 @@ const Index = () => {
   }, [selectedChallenge, navigate]);
 
   const trades = selectedChallenge ? getTrades(selectedChallenge.id) : [];
+  const journals = selectedChallenge ? getJournals(selectedChallenge.id) : [];
+
+  const addJournal = async (journal: Omit<Journal, 'id' | 'createdAt'>) => {
+    if (!user || !selectedChallenge) return;
+
+    try {
+      const newJournal = { ...journal, createdAt: new Date().toISOString() };
+
+      if (editingJournal?.id) {
+        const journalRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/journals/${editingJournal.id}`);
+        await update(journalRef, newJournal);
+        const updatedJournals = journals.map(j => j.id === editingJournal.id ? { ...newJournal, id: editingJournal.id } as Journal : j);
+        updateLocalJournals(selectedChallenge.id, updatedJournals);
+        toast.success("Journal updated");
+      } else {
+        const journalsRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/journals`);
+        const newRef = await push(journalsRef, newJournal);
+        const updatedJournals = [{ ...newJournal, id: newRef.key!, createdAt: newJournal.createdAt } as Journal, ...journals];
+        updateLocalJournals(selectedChallenge.id, updatedJournals);
+        toast.success("Journal entry added");
+      }
+      setEditingJournal(null);
+    } catch (error) {
+      toast.error("Failed to save journal");
+    }
+  };
 
   const addTrade = async (trade: Omit<Trade, 'id' | 'createdAt'>) => {
     if (!user || !selectedChallenge) return;
@@ -137,6 +169,18 @@ const Index = () => {
           try {
             const tradeRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/trades/${tradeId}`);
             await remove(tradeRef);
+
+            // Delete screenshot from Google Drive if exists
+            if (tradeToDelete.screenshotFileId) {
+              try {
+                const accessToken = await getAccessToken();
+                if (accessToken) {
+                  await deleteFromGoogleDrive(accessToken, tradeToDelete.screenshotFileId);
+                }
+              } catch (driveError) {
+                console.error('Failed to delete screenshot from Drive:', driveError);
+              }
+            }
           } catch (error) {
             updateLocalTrades(selectedChallenge.id, [...updatedTrades, tradeToDelete]);
             toast.error("Failed to delete trade");
@@ -154,16 +198,73 @@ const Index = () => {
     setIsAddModalOpen(true);
   };
 
+  const deleteJournal = async (journalId: string) => {
+    if (!user || !selectedChallenge) return;
+
+    const journalToDelete = journals.find(j => j.id === journalId);
+    if (!journalToDelete) return;
+
+    const updatedJournals = journals.filter(j => j.id !== journalId);
+    updateLocalJournals(selectedChallenge.id, updatedJournals);
+
+    let isUndone = false;
+
+    const toastId = toast(
+      <UndoToast
+        message="Journal deleted"
+        onUndo={() => {
+          isUndone = true;
+          toast.dismiss(toastId);
+          updateLocalJournals(selectedChallenge.id, [...updatedJournals, journalToDelete]);
+          toast.success("Journal restored");
+        }}
+      />,
+      { duration: 10000 }
+    );
+
+    setTimeout(async () => {
+      if (!isUndone) {
+        try {
+          const journalRef = ref(db, `users/${user.uid}/challenges/${selectedChallenge.id}/journals/${journalId}`);
+          await remove(journalRef);
+
+          // Delete screenshot from Google Drive if exists
+          if (journalToDelete.screenshotFileId) {
+            try {
+              const accessToken = await getAccessToken();
+              if (accessToken) {
+                await deleteFromGoogleDrive(accessToken, journalToDelete.screenshotFileId);
+              }
+            } catch (driveError) {
+              console.error('Failed to delete screenshot from Drive:', driveError);
+            }
+          }
+        } catch (error) {
+          updateLocalJournals(selectedChallenge.id, [...updatedJournals, journalToDelete]);
+          toast.error("Failed to delete journal");
+        }
+      }
+    }, 10000);
+  };
+
+  const handleEditJournal = (journal: Journal) => {
+    setEditingJournal(journal);
+    setIsTradeModalOpen(false);
+    setIsJournalModalOpen(true);
+  };
+
   const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
 
   const getDayData = (day: number): DayData | null => {
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayTrades = trades.filter(t => t.date === dateStr);
-    if (dayTrades.length === 0) return null;
+    const dayJournals = journals.filter(j => j.date === dateStr);
+    if (dayTrades.length === 0 && dayJournals.length === 0) return null;
     return {
       date: dateStr,
       trades: dayTrades,
+      journals: dayJournals,
       totalProfit: dayTrades.reduce((sum, t) => sum + t.profit, 0),
       tradeCount: dayTrades.length,
     };
@@ -175,13 +276,16 @@ const Index = () => {
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayData = getDayData(day);
 
-    if (dayData && dayData.trades.length > 0) {
-      setSelectedDate(dayData.date);
+    setSelectedDate(dateStr);
+
+    if (dayData && (dayData.trades.length > 0 || dayData.journals.length > 0)) {
+      // Has data - open trade modal to view
       setIsTradeModalOpen(true);
     } else if (!isArchived) {
-      setSelectedDate(dateStr);
+      // Empty day - show entry selection dialog
       setEditingTrade(null);
-      setIsAddModalOpen(true);
+      setEditingJournal(null);
+      setIsEntryDialogOpen(true);
     }
   };
 
@@ -211,15 +315,55 @@ const Index = () => {
     return days;
   };
 
-  const selectedDayTrades = selectedDate ? trades.filter(t => t.date === selectedDate) : [];
+  // Calculate weekly totals for the month (profit minus fees)
+  const getWeeklyTotals = () => {
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const weeks: { weekNum: number; profit: number; trades: number }[] = [];
 
-  // Calculate monthly stats
+    let weekNum = 1;
+    let weekProfit = 0;
+    let weekFees = 0;
+    let weekTrades = 0;
+    let dayInWeek = firstDay;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayData = getDayData(day);
+      if (dayData) {
+        weekProfit += dayData.totalProfit;
+        weekFees += dayData.trades.reduce((sum, t) => sum + (t.fees || 0), 0);
+        weekTrades += dayData.tradeCount;
+      }
+      dayInWeek++;
+
+      if (dayInWeek === 7 || day === daysInMonth) {
+        // Net profit = profit - fees
+        weeks.push({ weekNum, profit: weekProfit - weekFees, trades: weekTrades });
+        weekNum++;
+        weekProfit = 0;
+        weekFees = 0;
+        weekTrades = 0;
+        dayInWeek = 0;
+      }
+    }
+
+    return weeks;
+  };
+
+  const weeklyTotals = getWeeklyTotals();
+
+  const selectedDayTrades = selectedDate ? trades.filter(t => t.date === selectedDate) : [];
+  const selectedDayJournals = selectedDate ? journals.filter(j => j.date === selectedDate) : [];
+
+  // Calculate monthly stats (profit minus fees)
   const monthlyTrades = trades.filter(t => {
     const tradeDate = new Date(t.date);
     return tradeDate.getMonth() === currentDate.getMonth() && tradeDate.getFullYear() === currentDate.getFullYear();
   });
   const monthlyProfit = monthlyTrades.reduce((sum, t) => sum + t.profit, 0);
-  const isMonthlyProfit = monthlyProfit >= 0;
+  const monthlyFees = monthlyTrades.reduce((sum, t) => sum + (t.fees || 0), 0);
+  const monthlyNetProfit = monthlyProfit - monthlyFees;
+  const isMonthlyProfit = monthlyNetProfit >= 0;
 
   if (loading) {
     return (
@@ -237,7 +381,7 @@ const Index = () => {
     <div className="h-screen bg-gradient-mesh flex flex-col overflow-hidden">
       <Navbar />
 
-      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full p-2 sm:p-4 md:p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-hidden">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:gap-4 mb-3 sm:mb-6 animate-fade-in">
           <div className="flex items-center justify-between">
@@ -251,12 +395,30 @@ const Index = () => {
               <div>
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold gradient-text">Calendar</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  {monthlyTrades.length} trades • 
-                  <span className={cn("font-semibold ml-1", isMonthlyProfit ? "text-profit" : "text-loss")}>
-                    {isMonthlyProfit ? "+" : "-"}{fmt(Math.abs(monthlyProfit))}
+                  {monthlyTrades.length} trades •
+                  <span className={cn("font-semibold ml-1 font-mono", isMonthlyProfit ? "text-profit" : "text-loss/80")}>
+                    {isMonthlyProfit ? "+" : ""}{fmt(monthlyNetProfit)}
                   </span>
                 </p>
               </div>
+            </div>
+
+            {/* Weekly Totals - Center */}
+            <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-center">
+              {weeklyTotals.map((week) => (
+                <div
+                  key={week.weekNum}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-xs font-mono",
+                    week.trades === 0 && "text-muted-foreground/40",
+                    week.profit > 0 && "text-profit bg-profit/10",
+                    week.profit < 0 && "text-loss/80 bg-loss/10",
+                    week.profit === 0 && week.trades > 0 && "text-muted-foreground bg-muted/30"
+                  )}
+                >
+                  W{week.weekNum}: {week.trades > 0 ? (week.profit >= 0 ? '+' : '') + fmt(week.profit) : '-'}
+                </div>
+              ))}
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2">
@@ -306,7 +468,7 @@ const Index = () => {
         {/* Calendar Grid */}
         <div className="flex-1 flex flex-col min-h-0 animate-scale-in">
           <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-3">
-            {dayNames.map((day, index) => (
+            {dayNames.map((day) => (
               <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider py-1 sm:py-2">
                 <span className="sm:hidden">{day.charAt(0)}</span>
                 <span className="hidden sm:inline">{day}</span>
@@ -317,6 +479,25 @@ const Index = () => {
           <div className="grid grid-cols-7 gap-1 sm:gap-2 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
             {renderCalendar()}
           </div>
+
+          {/* Mobile Weekly Summary */}
+          <div className="md:hidden mt-2 pt-2 border-t border-border/30">
+            <div className="flex items-center gap-1 flex-wrap">
+              {weeklyTotals.filter(w => w.trades > 0).map((week) => (
+                <div
+                  key={week.weekNum}
+                  className={cn(
+                    "px-1.5 py-0.5 rounded text-[10px] font-mono",
+                    week.profit > 0 && "text-profit bg-profit/10",
+                    week.profit < 0 && "text-loss/80 bg-loss/10",
+                    week.profit === 0 && "text-muted-foreground bg-muted/30"
+                  )}
+                >
+                  W{week.weekNum}: {week.profit >= 0 ? '+' : ''}{fmt(week.profit)}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Modals */}
@@ -324,17 +505,38 @@ const Index = () => {
           open={isTradeModalOpen}
           onClose={() => setIsTradeModalOpen(false)}
           trades={selectedDayTrades}
+          journals={selectedDayJournals}
           date={selectedDate || ''}
           onDelete={deleteTrade}
           onEdit={handleEditTrade}
           openAddTrade={() => {
             setEditingTrade(null);
-            setSelectedDate(null);
             setIsTradeModalOpen(false);
             setIsAddModalOpen(true);
           }}
+          openAddJournal={() => {
+            setEditingJournal(null);
+            setIsTradeModalOpen(false);
+            setIsJournalModalOpen(true);
+          }}
+          onDeleteJournal={deleteJournal}
+          onEditJournal={handleEditJournal}
           readOnly={isArchived}
           formatCurrency={fmt}
+        />
+
+        <AddEntryDialog
+          open={isEntryDialogOpen}
+          onClose={() => setIsEntryDialogOpen(false)}
+          onSelectTrade={() => {
+            setIsEntryDialogOpen(false);
+            setIsAddModalOpen(true);
+          }}
+          onSelectJournal={() => {
+            setIsEntryDialogOpen(false);
+            setIsJournalModalOpen(true);
+          }}
+          date={selectedDate || undefined}
         />
 
         <AddTradeModal
@@ -342,6 +544,14 @@ const Index = () => {
           onClose={() => { setIsAddModalOpen(false); setEditingTrade(null); setSelectedDate(null); }}
           onSave={addTrade}
           editingTrade={editingTrade}
+          initialDate={selectedDate || undefined}
+        />
+
+        <AddJournalModal
+          open={isJournalModalOpen}
+          onClose={() => { setIsJournalModalOpen(false); setEditingJournal(null); setSelectedDate(null); }}
+          onSave={addJournal}
+          editingJournal={editingJournal}
           initialDate={selectedDate || undefined}
         />
 

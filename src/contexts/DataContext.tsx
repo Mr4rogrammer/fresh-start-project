@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { ref, get, onValue } from "firebase/database";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
-import { Trade } from "@/types/trade";
+import { Trade, Journal } from "@/types/trade";
 
 interface Note {
   id: string;
@@ -33,14 +33,19 @@ interface DataContextType {
   challenges: Challenge[];
   // Trades grouped by challenge ID
   tradesByChallenge: Record<string, Trade[]>;
+  // Journals grouped by challenge ID
+  journalsByChallenge: Record<string, Journal[]>;
   // Get trades for a specific challenge
   getTrades: (challengeId: string) => Trade[];
+  // Get journals for a specific challenge
+  getJournals: (challengeId: string) => Journal[];
   notes: Note[];
   links: Link[];
   loading: boolean;
   refetchData: () => Promise<void>;
   // Update local state without refetch
   updateLocalTrades: (challengeId: string, trades: Trade[]) => void;
+  updateLocalJournals: (challengeId: string, journals: Journal[]) => void;
   updateLocalChallenges: (challenges: Challenge[]) => void;
   updateLocalNotes: (notes: Note[]) => void;
   updateLocalLinks: (links: Link[]) => void;
@@ -52,6 +57,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [tradesByChallenge, setTradesByChallenge] = useState<Record<string, Trade[]>>({});
+  const [journalsByChallenge, setJournalsByChallenge] = useState<Record<string, Journal[]>>({});
   const [notes, setNotes] = useState<Note[]>([]);
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,6 +66,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     if (!user) {
       setChallenges([]);
       setTradesByChallenge({});
+      setJournalsByChallenge({});
       setNotes([]);
       setLinks([]);
       return;
@@ -84,11 +91,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         const challengesArray: Challenge[] = [];
         const tradesMap: Record<string, Trade[]> = {};
 
-        // Fetch trades for all challenges in parallel
+        // Fetch trades and journals for all challenges in parallel
+        const journalsMap: Record<string, Journal[]> = {};
+
         const tradePromises = Object.entries(challengesData).map(
           async ([id, challenge]: [string, any]) => {
             const tradesRef = ref(db, `users/${user.uid}/challenges/${id}/trades`);
-            const tradesSnapshot = await get(tradesRef);
+            const journalsRef = ref(db, `users/${user.uid}/challenges/${id}/journals`);
+            const [tradesSnapshot, journalsSnapshot] = await Promise.all([
+              get(tradesRef),
+              get(journalsRef)
+            ]);
 
             const tradesData: Trade[] = [];
             let totalProfitLoss = 0;
@@ -109,6 +122,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
             }
 
             tradesMap[id] = tradesData;
+
+            // Process journals
+            const journalsData: Journal[] = [];
+            if (journalsSnapshot.exists()) {
+              const data = journalsSnapshot.val();
+              Object.keys(data).forEach((key) => {
+                journalsData.push({ id: key, ...data[key] } as Journal);
+              });
+              journalsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            }
+            journalsMap[id] = journalsData;
 
             const openingBalance = challenge.openingBalance || 0;
             const currentBalance = openingBalance + totalProfitLoss;
@@ -131,9 +155,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
 
         setChallenges(challengesArray);
         setTradesByChallenge(tradesMap);
+        setJournalsByChallenge(journalsMap);
       } else {
         setChallenges([]);
         setTradesByChallenge({});
+        setJournalsByChallenge({});
       }
 
       // Process notes
@@ -187,10 +213,21 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return tradesByChallenge[challengeId] || [];
   };
 
+  const getJournals = (challengeId: string): Journal[] => {
+    return journalsByChallenge[challengeId] || [];
+  };
+
   const updateLocalTrades = (challengeId: string, trades: Trade[]) => {
     setTradesByChallenge(prev => ({
       ...prev,
       [challengeId]: trades,
+    }));
+  };
+
+  const updateLocalJournals = (challengeId: string, journals: Journal[]) => {
+    setJournalsByChallenge(prev => ({
+      ...prev,
+      [challengeId]: journals,
     }));
   };
 
@@ -211,12 +248,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
       value={{
         challenges,
         tradesByChallenge,
+        journalsByChallenge,
         getTrades,
+        getJournals,
         notes,
         links,
         loading,
         refetchData: fetchData,
         updateLocalTrades,
+        updateLocalJournals,
         updateLocalChallenges,
         updateLocalNotes,
         updateLocalLinks,

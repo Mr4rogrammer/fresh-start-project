@@ -83,8 +83,8 @@ export const Navbar = () => {
   );
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/40 glass-premium">
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+    <nav className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
           <div className="flex items-center gap-6">
@@ -197,15 +197,24 @@ export const Navbar = () => {
           {/* Right Side Actions */}
           <div className="flex items-center gap-2">
             {user && (
-              <Link 
-                to="/profile" 
+              <Link
+                to="/profile"
                 className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-muted/50 transition-colors group"
               >
-                <img
-                  src={user.photoURL || "https://via.placeholder.com/40"}
-                  alt="Profile"
-                  className="w-8 h-8 rounded-full ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all"
-                />
+                <div className="w-8 h-8 rounded-full ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all overflow-hidden bg-primary/10 flex items-center justify-center">
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="text-sm font-medium text-primary">
+                      {user.displayName?.charAt(0)?.toUpperCase() || "U"}
+                    </span>
+                  )}
+                </div>
                 <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors max-w-[120px] truncate">
                   {user.displayName}
                 </span>
