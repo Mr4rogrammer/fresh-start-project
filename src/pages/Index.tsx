@@ -11,12 +11,20 @@ import { TradeModal } from "@/components/TradeModal";
 import { AddTradeModal } from "@/components/AddTradeModal";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ChevronLeft, ChevronRight, Calendar, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 import { cn } from "@/lib/utils";
+import { useCurrency, SUPPORTED_CURRENCIES } from "@/hooks/useCurrency";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -28,7 +36,18 @@ const Index = () => {
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
-  
+
+  const {
+    currency,
+    setCurrency,
+    refreshingRate,
+    fetchExchangeRates,
+    currentCurrencyInfo,
+    currentRate,
+    fmt,
+    fmtSigned,
+  } = useCurrency();
+
   const {
     isVerificationRequired,
     requireVerification,
@@ -186,7 +205,7 @@ const Index = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const dayData = getDayData(day);
       const isToday = isCurrentMonth && day === today.getDate();
-      days.push(<CalendarDay key={day} dayData={dayData} dayNumber={day} onClick={() => handleDayClick(day)} isToday={isToday} />);
+      days.push(<CalendarDay key={day} dayData={dayData} dayNumber={day} onClick={() => handleDayClick(day)} isToday={isToday} formatCurrency={fmt} />);
     }
 
     return days;
@@ -234,20 +253,43 @@ const Index = () => {
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   {monthlyTrades.length} trades • 
                   <span className={cn("font-semibold ml-1", isMonthlyProfit ? "text-profit" : "text-loss")}>
-                    {isMonthlyProfit ? "+" : ""}${Math.abs(monthlyProfit).toFixed(2)}
+                    {isMonthlyProfit ? "+" : "-"}{fmt(Math.abs(monthlyProfit))}
                   </span>
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2">
+              {/* Currency selector */}
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="w-[80px] sm:w-[110px] h-8 sm:h-9 text-xs sm:text-sm border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
+                  {SUPPORTED_CURRENCIES.map(c => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <span className="font-mono">{c.symbol}</span> {c.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currency !== "USD" && (
+                <button
+                  onClick={() => fetchExchangeRates(true)}
+                  disabled={refreshingRate}
+                  className="text-muted-foreground hover:text-primary transition-colors p-1"
+                  title={`1 USD = ${currentCurrencyInfo.symbol}${currentRate.toFixed(2)}`}
+                >
+                  <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
+                </button>
+              )}
               <Button variant="ghost" size="sm" onClick={goToToday} className="text-muted-foreground text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9">
                 Today
               </Button>
             </div>
           </div>
 
-          {/* Month Navigation - Separate row on mobile */}
+          {/* Month Navigation */}
           <div className="flex items-center justify-center gap-1 bg-card/60 backdrop-blur-sm rounded-xl p-1 border border-border/50">
             <Button variant="ghost" size="icon-sm" onClick={() => changeMonth(-1)} className="h-8 w-8 sm:h-9 sm:w-9">
               <ChevronLeft className="h-4 w-4" />
@@ -263,7 +305,6 @@ const Index = () => {
 
         {/* Calendar Grid */}
         <div className="flex-1 flex flex-col min-h-0 animate-scale-in">
-          {/* Day headers */}
           <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-3">
             {dayNames.map((day, index) => (
               <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider py-1 sm:py-2">
@@ -273,7 +314,6 @@ const Index = () => {
             ))}
           </div>
 
-          {/* Calendar days */}
           <div className="grid grid-cols-7 gap-1 sm:gap-2 flex-1 auto-rows-fr overflow-y-auto custom-scrollbar">
             {renderCalendar()}
           </div>
@@ -294,6 +334,7 @@ const Index = () => {
             setIsAddModalOpen(true);
           }}
           readOnly={isArchived}
+          formatCurrency={fmt}
         />
 
         <AddTradeModal

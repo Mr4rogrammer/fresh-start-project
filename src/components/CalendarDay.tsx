@@ -13,9 +13,14 @@ interface CalendarDayProps {
   dayNumber: number | null;
   onClick: () => void;
   isToday?: boolean;
+  formatCurrency?: (amount: number, decimals?: number) => string;
 }
 
-export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false }: CalendarDayProps) => {
+export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false, formatCurrency }: CalendarDayProps) => {
+  const fmtAmt = (amount: number) => {
+    if (formatCurrency) return formatCurrency(Math.abs(amount));
+    return `$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
   if (!dayNumber) {
     return <div className="aspect-square min-h-0" />;
   }
@@ -61,7 +66,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false }: Ca
               isProfit && "text-profit",
               isLoss && "text-loss"
             )}>
-              {isProfit ? '+' : ''}${Math.abs(dayData.totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {isProfit ? '+' : '-'}{fmtAmt(dayData.totalProfit)}
             </span>
           </div>
           
@@ -94,7 +99,7 @@ export const CalendarDay = ({ dayData, dayNumber, onClick, isToday = false }: Ca
                 "font-mono font-bold text-sm",
                 isProfit ? "text-profit" : "text-loss"
               )}>
-                {isProfit ? '+' : ''}${Math.abs(dayData.totalProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {isProfit ? '+' : '-'}{fmtAmt(dayData.totalProfit)}
               </span>
             </div>
             

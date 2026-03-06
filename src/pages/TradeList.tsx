@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useChallenge } from "@/contexts/ChallengeContext";
@@ -6,32 +6,21 @@ import { useData } from "@/contexts/DataContext";
 import { Trade } from "@/types/trade";
 import { Navbar } from "@/components/Navbar";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Share2 } from "lucide-react";
+import { CalendarIcon, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
-import { ShareCard } from "@/components/ShareCard";
-import { toast } from "sonner";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
+import { useCurrency, SUPPORTED_CURRENCIES } from "@/hooks/useCurrency";
 
 const TradeList = () => {
   const { user, loading } = useAuth();
@@ -42,6 +31,16 @@ const TradeList = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [directionFilter, setDirectionFilter] = useState<string>("all");
   const [profitFilter, setProfitFilter] = useState<string>("all");
+
+  const {
+    currency,
+    setCurrency,
+    refreshingRate,
+    fetchExchangeRates,
+    currentCurrencyInfo,
+    currentRate,
+    fmt,
+  } = useCurrency();
 
   const {
     isVerificationRequired,
@@ -58,32 +57,21 @@ const TradeList = () => {
     const entry = entryPrice || 0;
     const stop = stopLoss || 0;
     const profit = takeProfit || 0;
-
-
     if (stop === 0) return "-";
-
     const risk = Math.abs(entry - stop);
     const reward = Math.abs(profit - entry);
-
-    // Avoid divide by zero
     if (risk === 0) return "-";
-
     return "1 : " + (reward / risk).toFixed(3);
   }
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/");
-    }
+    if (!loading && !user) navigate("/");
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    if (!selectedChallenge) {
-      navigate("/home");
-    }
+    if (!selectedChallenge) navigate("/home");
   }, [selectedChallenge, navigate]);
 
-  // Get trades from context instead of fetching
   const trades = selectedChallenge ? getTrades(selectedChallenge.id) : [];
 
   useEffect(() => {
@@ -92,8 +80,6 @@ const TradeList = () => {
 
   useEffect(() => {
     let filtered = [...trades];
-
-    // Date range filter
     if (dateRange?.from) {
       const from = dateRange.from;
       const to = dateRange.to || dateRange.from;
@@ -102,13 +88,9 @@ const TradeList = () => {
         return tradeDate >= from && tradeDate <= to;
       });
     }
-
-    // Direction filter
     if (directionFilter !== "all") {
       filtered = filtered.filter((trade) => trade.direction === directionFilter);
     }
-
-    // Profit/Loss filter
     if (profitFilter === "profit") {
       filtered = filtered.filter((trade) => trade.profit > 0);
     } else if (profitFilter === "loss") {
@@ -116,7 +98,6 @@ const TradeList = () => {
     } else if (profitFilter === "breakeven") {
       filtered = filtered.filter((trade) => trade.profit === 0);
     }
-
     setFilteredTrades(filtered);
   }, [trades, dateRange, directionFilter, profitFilter]);
 
@@ -125,7 +106,6 @@ const TradeList = () => {
     setDirectionFilter("all");
     setProfitFilter("all");
   };
-
 
   if (loading) {
     return (
@@ -142,7 +122,37 @@ const TradeList = () => {
       <Navbar />
       <div className="container mx-auto p-2 sm:p-4 md:p-6 animate-fade-in">
         <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Trade List</h1>
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold">Trade List</h1>
+            <div className="flex items-center gap-2">
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger className="w-[80px] sm:w-[110px] h-8 sm:h-9 text-xs sm:text-sm border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
+                  {SUPPORTED_CURRENCIES.map(c => (
+                    <SelectItem key={c.code} value={c.code}>
+                      <span className="font-mono">{c.symbol}</span> {c.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currency !== "USD" && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                    1 USD = {currentCurrencyInfo.symbol}{currentRate.toFixed(2)}
+                  </span>
+                  <button
+                    onClick={() => fetchExchangeRates(true)}
+                    disabled={refreshingRate}
+                    className="text-muted-foreground hover:text-primary transition-colors p-0.5"
+                  >
+                    <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Filters */}
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 bg-card rounded-lg border">
@@ -256,7 +266,7 @@ const TradeList = () => {
                             : "text-muted-foreground"
                       }`}
                     >
-                      {trade.profit > 0 ? '+' : ''}${trade.profit.toFixed(2)}
+                      {trade.profit > 0 ? '+' : ''}{fmt(trade.profit)}
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
@@ -325,7 +335,7 @@ const TradeList = () => {
                   </TableRow>
                 ) : (
                   filteredTrades.map((trade) => (
-                    <TableRow key={trade.id} className="hover:bg-muted/50 transition-colors" >
+                    <TableRow key={trade.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell>{trade.date}</TableCell>
                       <TableCell className="font-medium">{trade.pair}</TableCell>
                       <TableCell>
@@ -342,8 +352,7 @@ const TradeList = () => {
                       <TableCell>{trade.exitPrice}</TableCell>
                       <TableCell>{trade.slPrice}</TableCell>
                       <TableCell>{trade.lotSize}</TableCell>
-                      <TableCell>${trade.fees}</TableCell>
-
+                      <TableCell>{fmt(trade.fees)}</TableCell>
                       <TableCell>
                         <span
                           className={`font-semibold ${trade.profit > 0
@@ -353,11 +362,9 @@ const TradeList = () => {
                               : "text-muted-foreground"
                             }`}
                         >
-                          ${trade.profit}
+                          {fmt(trade.profit)}
                         </span>
                       </TableCell>
-
-
                       <TableCell>{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</TableCell>
                       <TableCell className="max-w-xs truncate">{trade.notes || "-"}</TableCell>
                       <TableCell onClick={() => trade.link && trade.link.trim() !== "" && trade.link.includes("https") && window.open(trade.link, "_blank")}>
@@ -365,7 +372,6 @@ const TradeList = () => {
                           className={`font-semibold cursor-pointer ${trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "text-profit" : "text-muted-foreground"}`}
                         >
                           {trade.link && trade.link.trim() !== "" && trade.link.includes("https") ? "Open" : "-"}
-
                         </span>
                       </TableCell>
                     </TableRow>
