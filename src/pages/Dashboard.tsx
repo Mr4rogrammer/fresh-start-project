@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, IndianRupee, DollarSign, RefreshCw } from "lucide-react";
+import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, RefreshCw, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -48,19 +48,31 @@ const Dashboard = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState<string>("");
   const shareCardRef = useRef<HTMLDivElement>(null);
-  const [currency, setCurrency] = useState<"USD" | "INR">(() => {
-    return (localStorage.getItem("dashboard-currency") as "USD" | "INR") || "USD";
-  });
-  const [inrRate, setInrRate] = useState<number>(() => {
-    const cached = localStorage.getItem("usd-inr-rate");
-    return cached ? parseFloat(cached) : 83.5;
-  });
+  const SUPPORTED_CURRENCIES: { code: string; symbol: string; label: string }[] = [
+    { code: "USD", symbol: "$", label: "US Dollar" },
+    { code: "INR", symbol: "₹", label: "Indian Rupee" },
+    { code: "EUR", symbol: "€", label: "Euro" },
+    { code: "GBP", symbol: "£", label: "British Pound" },
+    { code: "JPY", symbol: "¥", label: "Japanese Yen" },
+    { code: "AUD", symbol: "A$", label: "Australian Dollar" },
+    { code: "CAD", symbol: "C$", label: "Canadian Dollar" },
+    { code: "CHF", symbol: "Fr", label: "Swiss Franc" },
+    { code: "SGD", symbol: "S$", label: "Singapore Dollar" },
+    { code: "AED", symbol: "د.إ", label: "UAE Dirham" },
+  ];
 
+  const [currency, setCurrency] = useState<string>(() => {
+    return localStorage.getItem("dashboard-currency") || "USD";
+  });
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(() => {
+    const cached = localStorage.getItem("exchange-rates");
+    return cached ? JSON.parse(cached) : {};
+  });
   const [refreshingRate, setRefreshingRate] = useState(false);
 
-  const fetchExchangeRate = async (force = false) => {
-    const CACHE_KEY = "usd-inr-rate";
-    const CACHE_TS_KEY = "usd-inr-rate-ts";
+  const fetchExchangeRates = async (force = false) => {
+    const CACHE_KEY = "exchange-rates";
+    const CACHE_TS_KEY = "exchange-rates-ts";
     const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
     if (!force) {
@@ -72,37 +84,39 @@ const Dashboard = () => {
     try {
       const res = await fetch("https://open.er-api.com/v6/latest/USD");
       const data = await res.json();
-      if (data?.rates?.INR) {
-        setInrRate(data.rates.INR);
-        localStorage.setItem(CACHE_KEY, String(data.rates.INR));
+      if (data?.rates) {
+        setExchangeRates(data.rates);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data.rates));
         localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
-        if (force) toast.success(`Rate updated: 1 USD = ₹${data.rates.INR.toFixed(2)}`);
+        if (force) toast.success("Exchange rates updated!");
       }
     } catch (err) {
-      console.warn("Failed to fetch live exchange rate, using cached/fallback");
-      if (force) toast.error("Failed to refresh rate");
+      console.warn("Failed to fetch exchange rates, using cached/fallback");
+      if (force) toast.error("Failed to refresh rates");
     } finally {
       setRefreshingRate(false);
     }
   };
 
-  useEffect(() => { fetchExchangeRate(); }, []);
+  useEffect(() => { fetchExchangeRates(); }, []);
+
+  const currentCurrencyInfo = SUPPORTED_CURRENCIES.find(c => c.code === currency) || SUPPORTED_CURRENCIES[0];
+  const currentRate = currency === "USD" ? 1 : (exchangeRates[currency] || 1);
 
   const fmt = (usdAmount: number, decimals = 2) => {
+    if (currency === "USD") return `$${usdAmount.toFixed(decimals)}`;
+    const converted = usdAmount * currentRate;
+    const sym = currentCurrencyInfo.symbol;
     if (currency === "INR") {
-      const inr = usdAmount * inrRate;
-      return `₹${inr.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+      return `${sym}${converted.toLocaleString("en-IN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
     }
-    return `$${usdAmount.toFixed(decimals)}`;
+    if (currency === "JPY") {
+      return `${sym}${Math.round(converted).toLocaleString()}`;
+    }
+    return `${sym}${converted.toFixed(decimals)}`;
   };
 
-  const sym = currency === "INR" ? "₹" : "$";
-
-  const toggleCurrency = () => {
-    const next = currency === "USD" ? "INR" : "USD";
-    setCurrency(next);
-    localStorage.setItem("dashboard-currency", next);
-  };
+  const sym = currentCurrencyInfo.symbol;
 
 
   useEffect(() => {
@@ -419,25 +433,29 @@ const Dashboard = () => {
 
             {/* Quick Actions */}
             <div className="flex gap-2 w-full sm:w-auto">
-              <div className="flex items-center gap-1.5">
-                <Button
-                  onClick={toggleCurrency}
-                  variant="outline"
-                  className="gap-1 sm:gap-2 hover:scale-105 transition-all border-2 text-xs sm:text-sm h-9 sm:h-10"
-                >
-                  {currency === "USD" ? <IndianRupee className="h-3 w-3 sm:h-4 sm:w-4" /> : <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />}
-                  {currency === "USD" ? "INR" : "USD"}
-                </Button>
-                {currency === "INR" && (
+            <div className="flex items-center gap-1.5">
+                <Select value={currency} onValueChange={(val) => { setCurrency(val); localStorage.setItem("dashboard-currency", val); }}>
+                  <SelectTrigger className="w-[90px] sm:w-[120px] h-9 sm:h-10 text-xs sm:text-sm border-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card/95 backdrop-blur-xl border-border/50">
+                    {SUPPORTED_CURRENCIES.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        <span className="font-mono">{c.symbol}</span> {c.code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {currency !== "USD" && (
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-                      1 USD = ₹{inrRate.toFixed(2)}
+                      1 USD = {currentCurrencyInfo.symbol}{currentRate.toFixed(2)}
                     </span>
                     <button
-                      onClick={() => fetchExchangeRate(true)}
+                      onClick={() => fetchExchangeRates(true)}
                       disabled={refreshingRate}
                       className="text-muted-foreground hover:text-primary transition-colors p-0.5"
-                      title="Refresh exchange rate"
+                      title="Refresh exchange rates"
                     >
                       <RefreshCw className={cn("h-3 w-3", refreshingRate && "animate-spin")} />
                     </button>
@@ -549,7 +567,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-8 [&>div]:min-h-[120px] sm:[&>div]:min-h-[160px]">
           <div className="animate-scale-in" style={{ animationDelay: "0s" }}>
             <StatsCard
               title="Opening Balance"

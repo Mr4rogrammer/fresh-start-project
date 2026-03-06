@@ -22,7 +22,7 @@ export const StatsCard = ({
 }: StatsCardProps) => {
   return (
     <div className={cn(
-      "relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-6 border transition-all duration-300 hover-lift group",
+      "relative overflow-hidden rounded-xl sm:rounded-2xl p-3 sm:p-6 border transition-all duration-300 hover-lift group h-full flex flex-col",
       "bg-card/80 backdrop-blur-sm",
       variant === "profit" && "stat-profit",
       variant === "loss" && "stat-loss",
@@ -38,7 +38,7 @@ export const StatsCard = ({
         variant === "neutral" && "bg-muted-foreground"
       )} />
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-col flex-1">
         <div className="flex items-start justify-between mb-2 sm:mb-4">
           <span className="text-[10px] sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">
             {title}
