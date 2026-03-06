@@ -3,7 +3,7 @@ import { Trade } from "@/types/trade";
 import { Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus } from "lucide-react";
 
 interface TradeModalProps {
   open: boolean;
@@ -14,11 +14,17 @@ interface TradeModalProps {
   onEdit: (trade: Trade) => void;
   openAddTrade: () => void;
   readOnly?: boolean;
+  formatCurrency?: (amount: number, decimals?: number) => string;
 }
 
-export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, openAddTrade, readOnly = false }: TradeModalProps) => {
+export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, openAddTrade, readOnly = false, formatCurrency }: TradeModalProps) => {
   const totalProfit = trades.reduce((sum, trade) => sum + trade.profit, 0);
   const isProfit = totalProfit > 0;
+
+  const fmt = (amount: number) => {
+    if (formatCurrency) return formatCurrency(amount);
+    return `$${amount.toFixed(2)}`;
+  };
 
   function calculateRiskReward(
     entryPrice?: number | null,
@@ -28,19 +34,12 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
     const entry = entryPrice || 0;
     const stop = stopLoss || 0;
     const profit = takeProfit || 0;
-
-
     if (stop === 0) return "-";
-
     const risk = Math.abs(entry - stop);
     const reward = Math.abs(profit - entry);
-
-    // Avoid divide by zero
     if (risk === 0) return "-";
-
     return "1 : " + (reward / risk).toFixed(3);
   }
-
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -56,13 +55,11 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
           </DialogTitle>
           <div className="flex items-center justify-between gap-4">
             <div className={`text-xl font-bold ${isProfit ? 'text-profit' : 'text-loss'}`}>
-              Total: ${isProfit ? '+' : ''}{totalProfit.toFixed(2)}
+              Total: {isProfit ? '+' : ''}{fmt(totalProfit)}
             </div>
             {!readOnly && (
               <Button
-                onClick={() => {
-                  openAddTrade();
-                }}
+                onClick={() => { openAddTrade(); }}
                 className="gap-2 transition-all hover:scale-105"
               >
                 <Plus className="h-5 w-5" />
@@ -70,7 +67,6 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
               </Button>
             )}
           </div>
-
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh]">
@@ -92,20 +88,10 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
 
                   {!readOnly && (
                     <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(trade)}
-                        className="h-8 w-8"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => onEdit(trade)} className="h-8 w-8">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => trade.id && onDelete(trade.id)}
-                        className="h-8 w-8 text-loss hover:text-loss"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => trade.id && onDelete(trade.id)} className="h-8 w-8 text-loss hover:text-loss">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -121,51 +107,36 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
                     <span className="text-muted-foreground">Exit:</span>
                     <span className="ml-2 font-medium">{trade.exitPrice}</span>
                   </div>
-
-
                   <div>
                     <span className="text-muted-foreground">Stop Loss:</span>
                     <span className="ml-2 font-medium">{trade.slPrice}</span>
                   </div>
-
                   <div>
                     <span className="text-muted-foreground">Fees:</span>
-                    <span className="ml-2 font-medium">{trade.fees}</span>
+                    <span className="ml-2 font-medium">{fmt(trade.fees)}</span>
                   </div>
-
                   <div>
                     <span className="text-muted-foreground">Lot Size:</span>
                     <span className="ml-2 font-medium">{trade.lotSize}</span>
                   </div>
-
                   <div>
                     <span className="text-muted-foreground">Risk Reward:</span>
-                    <span className="ml-2 font-medium"> 1 : {calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</span>
+                    <span className="ml-2 font-medium">{calculateRiskReward(trade.entryPrice, trade.slPrice, trade.exitPrice)}</span>
                   </div>
-
                   <div>
                     <span className="text-muted-foreground">Profit/Loss:</span>
-                    <span className={`ml-2 font-bold ${trade.profit >= 0 ? 'text-profit' : 'text-loss'
-                      }`}>
-                      ${trade.profit >= 0 ? '+' : ''}{trade.profit.toFixed(2)}
+                    <span className={`ml-2 font-bold ${trade.profit >= 0 ? 'text-profit' : 'text-loss'}`}>
+                      {trade.profit >= 0 ? '+' : ''}{fmt(trade.profit)}
                     </span>
                   </div>
-
                   {trade.link?.trim() && (
-  <div>
-    <span className="text-muted-foreground">Link:</span>
-    <a
-      href={trade.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="ml-2 font-medium text-profit underline"
-    >
-      "Open Link In New Tab"
-    </a>
-  </div>
-)}
-
-
+                    <div>
+                      <span className="text-muted-foreground">Link:</span>
+                      <a href={trade.link} target="_blank" rel="noopener noreferrer" className="ml-2 font-medium text-profit underline">
+                        "Open Link In New Tab"
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {trade.notes && (
@@ -176,11 +147,7 @@ export const TradeModal = ({ open, onClose, trades, date, onDelete, onEdit, open
 
                 {trade.screenshotUrl && (
                   <div className="mt-3">
-                    <img
-                      src={trade.screenshotUrl}
-                      alt="Trade screenshot"
-                      className="rounded-lg w-full"
-                    />
+                    <img src={trade.screenshotUrl} alt="Trade screenshot" className="rounded-lg w-full" />
                   </div>
                 )}
               </div>
