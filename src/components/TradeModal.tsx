@@ -1,5 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trade, Journal } from "@/types/trade";
+import { Trade, Journal, TRADE_EMOTIONS, JOURNAL_ENTRY_TYPES } from "@/types/trade";
+import { Star } from "lucide-react";
 import { Trash2, Edit, Expand, Plus, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -150,6 +151,33 @@ export const TradeModal = ({ open, onClose, trades, journals = [], date, onDelet
                       {trade.profit >= 0 ? '+' : ''}{fmt(trade.profit)}
                     </span>
                   </div>
+                  {trade.strategy && (
+                    <div>
+                      <span className="text-muted-foreground">Strategy:</span>
+                      <span className="ml-2 font-medium">{trade.strategy}</span>
+                    </div>
+                  )}
+                  {trade.rating && (
+                    <div className="col-span-2 flex items-center gap-1">
+                      <span className="text-muted-foreground mr-1">Rating:</span>
+                      {[1,2,3,4,5].map(s => (
+                        <Star key={s} className={`h-4 w-4 ${s <= trade.rating! ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />
+                      ))}
+                      <span className="text-xs text-muted-foreground ml-1">
+                        {['','Poor','Below avg','Average','Good','Excellent'][trade.rating]}
+                      </span>
+                    </div>
+                  )}
+                  {trade.emotion && (() => {
+                    const em = TRADE_EMOTIONS.find(e => e.value === trade.emotion);
+                    return (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Emotion:</span>
+                        <span className="ml-2 font-medium">{em?.emoji} {em?.label ?? trade.emotion}</span>
+                        {em && <p className="text-xs text-muted-foreground mt-0.5">{em.description}</p>}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {trade.notes && (
@@ -221,6 +249,24 @@ export const TradeModal = ({ open, onClose, trades, journals = [], date, onDelet
                         </div>
                       )}
                     </div>
+
+                    {journal.entryType && (() => {
+                      const et = JOURNAL_ENTRY_TYPES.find(t => t.value === journal.entryType);
+                      return (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 mb-2">
+                          {et?.emoji} {et?.label ?? journal.entryType}
+                        </span>
+                      );
+                    })()}
+                    {journal.emotion && (() => {
+                      const em = TRADE_EMOTIONS.find(e => e.value === journal.emotion);
+                      return (
+                        <div className="mb-2">
+                          <span className="text-sm font-medium">{em?.emoji} {em?.label ?? journal.emotion}</span>
+                          {em && <p className="text-xs text-muted-foreground mt-0.5">{em.description}</p>}
+                        </div>
+                      );
+                    })()}
 
                     {journal.notes && (
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">{journal.notes}</p>

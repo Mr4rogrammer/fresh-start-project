@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Calendar, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, RefreshCw, Plus, BookOpen, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
@@ -295,6 +295,24 @@ const Index = () => {
 
   const goToToday = () => setCurrentDate(new Date());
 
+  // Keyboard shortcuts: N = new trade, J = new journal
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isArchived) return;
+      if (e.key === 'n' || e.key === 'N') {
+        setEditingTrade(null);
+        setIsAddModalOpen(true);
+      }
+      if (e.key === 'j' || e.key === 'J') {
+        setEditingJournal(null);
+        setIsJournalModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isArchived]);
+
   const renderCalendar = () => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
@@ -465,6 +483,25 @@ const Index = () => {
           </div>
         </div>
 
+        {/* Daily Loss Limit Alert */}
+        {(() => {
+          const limit = selectedChallenge?.dailyLossLimit;
+          if (!limit) return null;
+          const todayStr = new Date().toISOString().split('T')[0];
+          const todayPnL = trades.filter(t => t.date === todayStr).reduce((s, t) => s + t.profit, 0);
+          if (todayPnL >= -limit) return null;
+          return (
+            <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-loss/10 border border-loss/30 text-loss/90 text-sm animate-fade-in">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              <span>
+                <strong>Daily loss limit hit</strong> — today&apos;s P&L is{' '}
+                <span className="font-mono font-semibold">{fmt(todayPnL)}</span>, exceeding your{' '}
+                <span className="font-mono font-semibold">-{fmt(limit)}</span> limit. Consider stepping away.
+              </span>
+            </div>
+          );
+        })()}
+
         {/* Calendar Grid */}
         <div className="flex-1 flex flex-col min-h-0 animate-scale-in">
           <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-3">
@@ -563,6 +600,31 @@ const Index = () => {
           description="Enter your 6-digit code to confirm"
         />
       </div>
+
+      {/* FAB - Quick Add */}
+      {!isArchived && (
+        <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-40">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-11 px-4 gap-2 shadow-lg rounded-full bg-card/95 backdrop-blur-sm hover:bg-muted border-border/60"
+            onClick={() => { setEditingJournal(null); setSelectedDate(new Date().toISOString().split('T')[0]); setIsJournalModalOpen(true); }}
+            title="New Journal (J)"
+          >
+            <BookOpen className="h-4 w-4 text-blue-400" />
+            <span className="text-sm">Journal</span>
+          </Button>
+          <Button
+            size="sm"
+            className="h-11 px-4 gap-2 shadow-lg rounded-full"
+            onClick={() => { setEditingTrade(null); setSelectedDate(new Date().toISOString().split('T')[0]); setIsAddModalOpen(true); }}
+            title="New Trade (N)"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="text-sm">Trade</span>
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import UndoToast from "@/components/UndoToast";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,7 @@ interface Challenge {
   createdAt: string;
   openingBalance: number;
   currentBalance?: number;
+  dailyLossLimit?: number;
 }
 
 const Home = () => {
@@ -59,8 +61,10 @@ const Home = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newChallengeName, setNewChallengeName] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
+  const [dailyLossLimit, setDailyLossLimit] = useState("");
   const [isBreachedOpen, setIsBreachedOpen] = useState(false);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const {
     isVerificationRequired,
@@ -88,14 +92,19 @@ const Home = () => {
 
     try {
       const challengesRef = ref(db, `users/${user.uid}/challenges`);
-      await push(challengesRef, {
+      const challengeData: Record<string, unknown> = {
         name: newChallengeName,
         openingBalance: Number(openingBalance),
         createdAt: new Date().toISOString(),
-      });
+      };
+      if (dailyLossLimit.trim() && !isNaN(Number(dailyLossLimit))) {
+        challengeData.dailyLossLimit = Number(dailyLossLimit);
+      }
+      await push(challengesRef, challengeData);
       toast.success("Challenge created successfully");
       setNewChallengeName("");
       setOpeningBalance("");
+      setDailyLossLimit("");
       setIsDialogOpen(false);
     } catch (error) {
       toast.error("Failed to create challenge");
@@ -432,7 +441,7 @@ const Home = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(challenge.id); }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(challenge.id); }}
                           className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           title="Delete"
                         >
@@ -531,7 +540,7 @@ const Home = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(challenge.id); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(challenge.id); }}
                             className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -617,7 +626,7 @@ const Home = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteChallenge(challenge.id); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(challenge.id); }}
                             className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -632,6 +641,15 @@ const Home = () => {
           </Collapsible>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => confirmDeleteId && handleDeleteChallenge(confirmDeleteId)}
+        title="Delete Challenge"
+        description="Are you sure you want to delete this challenge? All trades and journal entries will be permanently lost."
+        confirmLabel="Delete Challenge"
+      />
 
       {/* Create Challenge Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -656,9 +674,20 @@ const Home = () => {
                 placeholder="e.g., 10000"
                 value={openingBalance}
                 onChange={(e) => setOpeningBalance(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Daily Loss Limit <span className="text-muted-foreground font-normal">(Optional)</span></label>
+              <Input
+                type="number"
+                placeholder="e.g., 200"
+                value={dailyLossLimit}
+                onChange={(e) => setDailyLossLimit(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateChallenge()}
                 className="h-11"
               />
+              <p className="text-xs text-muted-foreground">Alert when daily loss exceeds this amount</p>
             </div>
             <div className="flex justify-end gap-3 pt-4">
               <Button

@@ -1,19 +1,20 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
-  Calendar, 
-  BarChart3, 
-  LogOut, 
-  Moon, 
-  Sun, 
-  Menu, 
-  Home, 
-  ChevronDown, 
-  List, 
-  FileText, 
-  Link as LinkIcon, 
+import {
+  Calendar,
+  BarChart3,
+  LogOut,
+  Moon,
+  Sun,
+  Menu,
+  Home,
+  ChevronDown,
+  List,
+  FileText,
+  Link as LinkIcon,
   CheckSquare,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/ThemeProvider";
@@ -159,13 +160,19 @@ export const Navbar = () => {
                     label="Calendar" 
                     isActive={location.pathname === "/calendar"} 
                   />
-                  <NavButton 
-                    to="/trades" 
-                    icon={List} 
-                    label="Trades" 
-                    isActive={location.pathname === "/trades"} 
+                  <NavButton
+                    to="/trades"
+                    icon={List}
+                    label="Trades"
+                    isActive={location.pathname === "/trades"}
                   />
-                  
+                  <NavButton
+                    to="/journals"
+                    icon={BookOpen}
+                    label="Journals"
+                    isActive={location.pathname === "/journals"}
+                  />
+
                   {/* Tools Menu */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -296,6 +303,15 @@ export const Navbar = () => {
                 size="icon-sm"
               >
                 <List className="h-4 w-4" />
+              </Button>
+            </Link>
+
+            <Link to="/journals">
+              <Button
+                variant={location.pathname === "/journals" ? "default" : "ghost"}
+                size="icon-sm"
+              >
+                <BookOpen className="h-4 w-4" />
               </Button>
             </Link>
 

@@ -5,7 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useChallenge } from "@/contexts/ChallengeContext";
 import { useData } from "@/contexts/DataContext";
 import { useNavigate } from "react-router-dom";
-import { Trade } from "@/types/trade";
+import { Trade, TRADE_EMOTIONS } from "@/types/trade";
+import { analyzeTrades, TradeInsight } from "@/lib/tradeAnalyzer";
+import { useGeminiAnalysis, DEFAULT_PROMPT_TEMPLATE } from "@/hooks/useGeminiAnalysis";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Navbar } from "@/components/Navbar";
 import { StatsCard } from "@/components/StatsCard";
 import { ShareCard } from "@/components/ShareCard";
@@ -20,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, RefreshCw, ChevronDown } from "lucide-react";
+import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, RefreshCw, ChevronDown, AlertTriangle, TrendingUp, Lightbulb, Sparkles, Settings2, Loader2, RefreshCcw, KeyRound } from "lucide-react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -29,6 +33,8 @@ import { toast } from "sonner";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -37,12 +43,18 @@ import {
   ReferenceLine,
 } from "recharts";
 
+const PROFIT_COLOR = 'hsl(155,55%,52%)';
+const LOSS_COLOR = 'hsl(15,60%,58%)';
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { selectedChallenge } = useChallenge();
   const { getTrades } = useData();
   const navigate = useNavigate();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const now = new Date();
+    return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: new Date(now.getFullYear(), now.getMonth() + 1, 0) };
+  });
   const [directionFilter, setDirectionFilter] = useState<string>("all");
   const [profitFilter, setProfitFilter] = useState<string>("all");
   const [isCapturing, setIsCapturing] = useState(false);
@@ -113,7 +125,7 @@ const Dashboard = () => {
       return;
     }
 
-    const headers = ["Date", "Pair", "Direction", "Entry Price", "Exit Price", "SL Price", "Lot Size", "Profit/Loss", "Fees", "Notes"];
+    const headers = ["Date", "Pair", "Direction", "Entry Price", "Exit Price", "SL Price", "Lot Size", "Profit/Loss", "Fees", "Emotion", "Strategy", "Rating", "Notes"];
     const csvData = filteredTrades.map(trade => [
       trade.date,
       trade.pair,
@@ -124,6 +136,9 @@ const Dashboard = () => {
       trade.lotSize,
       trade.profit,
       trade.fees || 0,
+      trade.emotion || "",
+      trade.strategy || "",
+      trade.rating || "",
       trade.notes || ""
     ]);
 
@@ -254,6 +269,12 @@ const Dashboard = () => {
   const losingTrades = filteredTrades.filter(t => t.profit < 0);
   const breakevenTrades = filteredTrades.filter(t => t.profit === 0);
 
+  const grossProfit = winningTrades.reduce((s, t) => s + t.profit, 0);
+  const grossLoss = Math.abs(losingTrades.reduce((s, t) => s + t.profit, 0));
+  const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0;
+  const avgWin = winningTrades.length > 0 ? grossProfit / winningTrades.length : 0;
+  const avgLoss = losingTrades.length > 0 ? grossLoss / losingTrades.length : 0;
+
   const totalTrades = filteredTrades.length;
   const winRate = totalTrades > 0 ? ((winningTrades.length / totalTrades) * 100).toFixed(0) : "0";
   const lossRate = totalTrades > 0 ? ((losingTrades.length / totalTrades) * 100).toFixed(0) : "0";
@@ -291,6 +312,132 @@ const Dashboard = () => {
       };
     });
   })();
+
+  // Daily P&L bar chart data
+  const dailyPnLData = (() => {
+    const map = new Map<string, { profit: number; trades: number }>();
+    filteredTrades.forEach(t => {
+      const cur = map.get(t.date) || { profit: 0, trades: 0 };
+      map.set(t.date, { profit: cur.profit + t.profit, trades: cur.trades + 1 });
+    });
+    let runningBalance = selectedChallenge?.openingBalance || 0;
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, data]) => {
+        runningBalance += data.profit;
+        return {
+          date: format(new Date(date), "MMM dd"),
+          profit: Number(data.profit.toFixed(2)),
+          profitBar: data.profit >= 0 ? Number(data.profit.toFixed(2)) : 0,
+          lossBar: data.profit < 0 ? Number(data.profit.toFixed(2)) : 0,
+          trades: data.trades,
+          balance: Number(runningBalance.toFixed(2)),
+        };
+      });
+  })();
+
+  // Cumulative fees line chart data
+  const feesChartData = (() => {
+    const map = new Map<string, number>();
+    filteredTrades.forEach(t => {
+      map.set(t.date, (map.get(t.date) || 0) + (t.fees || 0));
+    });
+    let cumFees = 0;
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, fees]) => {
+        cumFees += fees;
+        return {
+          date: format(new Date(date), "MMM dd"),
+          fees: Number(cumFees.toFixed(2)),
+          dailyFees: Number(fees.toFixed(2)),
+        };
+      });
+  })();
+
+  // Emotion breakdown data
+  const emotionData = (() => {
+    const map = new Map<string, { count: number; wins: number; losses: number; pnl: number }>();
+    filteredTrades.forEach(t => {
+      if (!t.emotion) return;
+      const cur = map.get(t.emotion) || { count: 0, wins: 0, losses: 0, pnl: 0 };
+      map.set(t.emotion, {
+        count: cur.count + 1,
+        wins: cur.wins + (t.profit > 0 ? 1 : 0),
+        losses: cur.losses + (t.profit < 0 ? 1 : 0),
+        pnl: cur.pnl + t.profit,
+      });
+    });
+    return Array.from(map.entries())
+      .map(([emotion, stats]) => ({ emotion, ...stats }))
+      .sort((a, b) => b.count - a.count);
+  })();
+
+  // Pair analytics
+  const pairData = (() => {
+    const map = new Map<string, { trades: number; wins: number; pnl: number }>();
+    filteredTrades.forEach(t => {
+      const cur = map.get(t.pair) || { trades: 0, wins: 0, pnl: 0 };
+      map.set(t.pair, { trades: cur.trades + 1, wins: cur.wins + (t.profit > 0 ? 1 : 0), pnl: cur.pnl + t.profit });
+    });
+    return Array.from(map.entries())
+      .map(([pair, s]) => ({ pair, ...s, winRate: s.trades > 0 ? ((s.wins / s.trades) * 100).toFixed(0) : '0' }))
+      .sort((a, b) => b.trades - a.trades);
+  })();
+
+  // Best & worst single trade
+  const bestTrade = filteredTrades.length > 0 ? filteredTrades.reduce((a, b) => b.profit > a.profit ? b : a) : null;
+  const worstTrade = filteredTrades.length > 0 ? filteredTrades.reduce((a, b) => b.profit < a.profit ? b : a) : null;
+
+  // Win/loss streaks
+  const { currentStreak, streakType, maxWinStreak, maxLossStreak } = (() => {
+    const sorted = [...filteredTrades].sort((a, b) => a.date.localeCompare(b.date));
+    let cur = 0, curType: 'win' | 'loss' | null = null, maxW = 0, maxL = 0, runW = 0, runL = 0;
+    sorted.forEach(t => {
+      if (t.profit > 0) {
+        runW++; runL = 0;
+        if (runW > maxW) maxW = runW;
+        if (curType === 'win') cur++;
+        else { curType = 'win'; cur = 1; }
+      } else if (t.profit < 0) {
+        runL++; runW = 0;
+        if (runL > maxL) maxL = runL;
+        if (curType === 'loss') cur++;
+        else { curType = 'loss'; cur = 1; }
+      }
+    });
+    return { currentStreak: cur, streakType: curType, maxWinStreak: maxW, maxLossStreak: maxL };
+  })();
+
+  // Max drawdown
+  const maxDrawdown = (() => {
+    if (chartData.length === 0) return 0;
+    let peak = chartData[0].balance, maxDD = 0;
+    chartData.forEach(d => {
+      if (d.balance > peak) peak = d.balance;
+      const dd = peak - d.balance;
+      if (dd > maxDD) maxDD = dd;
+    });
+    return maxDD;
+  })();
+
+  // Trade Coach — runs on ALL trades for the challenge, not just filtered
+  const insights: TradeInsight[] = analyzeTrades(trades);
+  const gemini = useGeminiAnalysis(trades, user?.uid);
+  const [showKeyManager, setShowKeyManager] = useState(false);
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [promptDraft, setPromptDraft] = useState("");
+  const [promptSaving, setPromptSaving] = useState(false);
+
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--popover))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '10px',
+    color: 'hsl(var(--foreground))',
+    fontSize: '13px',
+    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -590,172 +737,545 @@ const Dashboard = () => {
             />
           </div>
 
+          <div className="animate-scale-in" style={{ animationDelay: "0.4s" }}>
+            <StatsCard
+              title="Profit Factor"
+              value={filteredTrades.length > 0 ? (profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)) : '—'}
+              subtitle={grossLoss > 0 ? `${fmt(grossProfit)} gross / ${fmt(grossLoss)} loss` : 'No losses yet'}
+              variant={profitFactor >= 1.5 ? "profit" : profitFactor >= 1 ? "neutral" : "loss"}
+            />
+          </div>
+
+          <div className="animate-scale-in" style={{ animationDelay: "0.45s" }}>
+            {(() => {
+              const wr = filteredTrades.length > 0 ? winningTrades.length / filteredTrades.length : 0;
+              const lr = 1 - wr;
+              const expectancy = (wr * avgWin) - (lr * avgLoss);
+              return (
+                <StatsCard
+                  title="Expectancy"
+                  value={filteredTrades.length > 0 ? `${expectancy >= 0 ? '+' : ''}${fmt(expectancy)}` : '—'}
+                  subtitle="Avg profit per trade"
+                  variant={expectancy > 0 ? "profit" : expectancy < 0 ? "loss" : "neutral"}
+                />
+              );
+            })()}
+          </div>
+
         </div>
 
-        {/* Profit Progression Chart */}
+        {/* Charts row 1: Balance Progression + Daily P&L */}
         {chartData.length > 0 && (
-          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 mb-6 sm:mb-8 shadow-lg hover:shadow-xl transition-all duration-300 animate-fade-in">
-            <h3 className="text-base sm:text-xl font-semibold mb-3 sm:mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Balance Progression</h3>
-            <ResponsiveContainer width="100%" height={250} className="sm:hidden">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  tickMargin={8}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                  tickFormatter={(value) => `${sym}${value}`}
-                  width={50}
-                  domain={['dataMin - 50', 'dataMax + 50']}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
-                    color: 'hsl(var(--foreground))',
-                    fontSize: '12px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                  }}
-                  formatter={(value: number, name: string) => {
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            {/* Balance Progression */}
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in">
+              <h3 className="text-sm sm:text-base font-semibold mb-4 text-foreground/80">Balance Progression</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickMargin={6} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v) => `${sym}${v}`} width={60} domain={['dataMin - 20', 'dataMax + 20']} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => {
                     if (name === 'balance') return [fmt(value), 'Balance'];
-                    if (name === 'profit') return [`${value >= 0 ? '+' : ''}${fmt(value)}`, 'Daily P&L'];
-                    if (name === 'trades') return [`${value} trade${value !== 1 ? 's' : ''}`, 'Trades'];
                     return value;
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="balance"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))', r: 2 }}
-                  activeDot={{ r: 5, className: "animate-pulse" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-            <ResponsiveContainer width="100%" height={400} className="hidden sm:block">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => `${sym}${value}`}
-                  domain={['dataMin - 50', 'dataMax + 50']}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '12px',
-                    color: 'hsl(var(--foreground))',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                  }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'balance') return [fmt(value), 'Balance'];
-                    if (name === 'profit') return [`${value >= 0 ? '+' : ''}${fmt(value)}`, 'Daily P&L'];
-                    if (name === 'trades') return [`${value} trade${value !== 1 ? 's' : ''}`, 'Trades'];
-                    return value;
-                  }}
-                />
-                <ReferenceLine
-                  y={selectedChallenge?.openingBalance || 0}
-                  stroke="hsl(var(--muted-foreground))"
-                  strokeDasharray="3 3"
-                  label={{ value: 'Opening', fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="balance"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={1}
-                  dot={{ fill: 'hsl(var(--primary))', r: 3 }}
-                  activeDot={{ r: 7, className: "animate-pulse" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+                  }} />
+                  <ReferenceLine y={selectedChallenge?.openingBalance || 0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" />
+                  <Line type="monotone" dataKey="balance" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))', r: 3 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Daily P&L Bars */}
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in">
+              <h3 className="text-sm sm:text-base font-semibold mb-4 text-foreground/80">Daily P&L</h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={dailyPnLData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickMargin={6} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v) => `${sym}${v}`} width={60} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0].payload;
+                      return (
+                        <div style={tooltipStyle} className="px-3 py-2 space-y-1">
+                          <p className="font-semibold text-foreground">{label}</p>
+                          <p className={d.profit >= 0 ? 'text-[hsl(155,55%,52%)]' : 'text-[hsl(15,60%,58%)]'} style={{ color: d.profit >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
+                            P&L: {d.profit >= 0 ? '+' : ''}{fmt(d.profit)}
+                          </p>
+                          <p className="text-muted-foreground text-xs">{d.trades} trade{d.trades !== 1 ? 's' : ''}</p>
+                          <p className="text-muted-foreground text-xs">Balance: {fmt(d.balance)}</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={0.5} />
+                  <Bar dataKey="profitBar" fill={PROFIT_COLOR} fillOpacity={0.85} radius={[3,3,0,0]} isAnimationActive={false} />
+                  <Bar dataKey="lossBar" fill={LOSS_COLOR} fillOpacity={0.85} radius={[3,3,0,0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
 
-        {/* Additional Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 sm:p-6 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <span className="text-2xl">🏆</span>
-              Best Day
-            </h3>
-            {filteredTrades.length > 0 ? (
-              <div>
-                {(() => {
-                  const dayTotals = new Map<string, number>();
-                  filteredTrades.forEach(trade => {
-                    const current = dayTotals.get(trade.date) || 0;
-                    dayTotals.set(trade.date, current + trade.profit);
-                  });
-
-                  let bestDay = '';
-                  let bestProfit = -Infinity;
-                  dayTotals.forEach((profit, date) => {
-                    if (profit > bestProfit) {
-                      bestProfit = profit;
-                      bestDay = date;
-                    }
-                  });
-
-                  return (
-                    <>
-                      <p className="text-3xl font-bold text-profit mb-2">
-                        {bestProfit > 0 ? `+${fmt(bestProfit)}` : fmt(0)}
-                      </p>
-                      <p className="text-muted-foreground">
-                        {new Date(bestDay).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
-                    </>
-                  );
-                })()}
+        {/* Charts row 2: Fees + Best/Avg */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          {/* Cumulative Fees */}
+          {feesChartData.length > 0 && (
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm sm:text-base font-semibold text-foreground/80">Cumulative Fees</h3>
+                <span className="text-sm font-mono text-loss/80 font-semibold">-{fmt(totalFees)}</span>
               </div>
-            ) : (
-              <p className="text-muted-foreground">No trades yet</p>
-            )}
-          </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={feesChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickMargin={6} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} tickFormatter={(v) => `${sym}${v}`} width={60} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => {
+                    if (name === 'fees') return [fmt(value), 'Cumulative Fees'];
+                    if (name === 'dailyFees') return [fmt(value), 'Daily Fees'];
+                    return value;
+                  }} />
+                  <Line type="monotone" dataKey="fees" stroke="hsl(var(--loss))" strokeWidth={2} dot={{ fill: 'hsl(var(--loss))', r: 3 }} activeDot={{ r: 6 }} strokeOpacity={0.8} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
+          {/* Best day + Average trade */}
+          <div className="grid grid-rows-2 gap-4">
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-border/50 shadow-lg animate-fade-in">
+              <h3 className="text-sm font-semibold mb-2 text-foreground/80 flex items-center gap-2">
+                <span>🏆</span> Best Day
+              </h3>
+              {filteredTrades.length > 0 ? (() => {
+                const dayTotals = new Map<string, number>();
+                filteredTrades.forEach(t => dayTotals.set(t.date, (dayTotals.get(t.date) || 0) + t.profit));
+                let bestDay = '', bestProfit = -Infinity;
+                dayTotals.forEach((profit, date) => { if (profit > bestProfit) { bestProfit = profit; bestDay = date; } });
+                return (
+                  <div className="flex items-baseline justify-between">
+                    <p className="text-2xl font-bold text-profit font-mono">{bestProfit > 0 ? `+${fmt(bestProfit)}` : fmt(0)}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(bestDay).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                  </div>
+                );
+              })() : <p className="text-sm text-muted-foreground">No trades yet</p>}
+            </div>
 
-          <div className="bg-card/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
-              <span className="text-xl sm:text-2xl">📊</span>
-              Average Trade
-            </h3>
-            {filteredTrades.length > 0 ? (
-              <div>
-                <p className={cn(
-                  "text-2xl sm:text-3xl font-bold mb-1 sm:mb-2",
-                  netProfit / totalTrades > 0 ? "text-profit" : "text-loss"
-                )}>
-                  {netProfit / totalTrades >= 0 ? '+' : ''}{fmt(netProfit / totalTrades)}
-                </p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Per trade
-                </p>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">No trades yet</p>
-            )}
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-border/50 shadow-lg animate-fade-in">
+              <h3 className="text-sm font-semibold mb-2 text-foreground/80 flex items-center gap-2">
+                <span>📊</span> Average Trade
+              </h3>
+              {filteredTrades.length > 0 ? (
+                <div className="flex items-baseline justify-between">
+                  <p className={cn("text-2xl font-bold font-mono", netProfit / totalTrades >= 0 ? "text-profit" : "text-loss/80")}>
+                    {netProfit / totalTrades >= 0 ? '+' : ''}{fmt(netProfit / totalTrades)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">per trade</p>
+                </div>
+              ) : <p className="text-sm text-muted-foreground">No trades yet</p>}
+            </div>
           </div>
         </div>
+
+        {/* Best/Worst + Streaks + Drawdown */}
+        {filteredTrades.length > 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 sm:mb-8">
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 border border-border/50 shadow-lg">
+              <p className="text-xs text-muted-foreground mb-1">Best Trade</p>
+              <p className="text-xl font-bold text-profit font-mono">+{fmt(bestTrade?.profit || 0)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{bestTrade?.pair} · {bestTrade?.date}</p>
+            </div>
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 border border-border/50 shadow-lg">
+              <p className="text-xs text-muted-foreground mb-1">Worst Trade</p>
+              <p className="text-xl font-bold text-loss/80 font-mono">{fmt(worstTrade?.profit || 0)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{worstTrade?.pair} · {worstTrade?.date}</p>
+            </div>
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 border border-border/50 shadow-lg">
+              <p className="text-xs text-muted-foreground mb-1">Current Streak</p>
+              <p className={cn("text-xl font-bold font-mono", streakType === 'win' ? 'text-profit' : streakType === 'loss' ? 'text-loss/80' : 'text-muted-foreground')}>
+                {currentStreak > 0 ? `${currentStreak} ${streakType === 'win' ? 'W' : 'L'}` : '-'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">Best W: {maxWinStreak} · Best L: {maxLossStreak}</p>
+            </div>
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 border border-border/50 shadow-lg">
+              <p className="text-xs text-muted-foreground mb-1">Max Drawdown</p>
+              <p className="text-xl font-bold text-loss/80 font-mono">-{fmt(maxDrawdown)}</p>
+              <p className="text-xs text-muted-foreground mt-1">From peak balance</p>
+            </div>
+          </div>
+        )}
+
+        {/* Day of Week Heatmap */}
+        {filteredTrades.length >= 5 && (
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in mb-6 sm:mb-8">
+            <h3 className="text-sm sm:text-base font-semibold mb-4 text-foreground/80">Day of Week Performance</h3>
+            <div className="grid grid-cols-5 gap-2 sm:gap-3">
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, idx) => {
+                const dowTrades = filteredTrades.filter(t => {
+                  const d = new Date(t.date);
+                  return d.getDay() === idx + 1; // Mon=1 ... Fri=5
+                });
+                const pnl = dowTrades.reduce((s, t) => s + t.profit, 0);
+                const wins = dowTrades.filter(t => t.profit > 0).length;
+                const wr = dowTrades.length > 0 ? Math.round((wins / dowTrades.length) * 100) : null;
+                const isProfit = pnl > 0;
+                const isLoss = pnl < 0;
+                return (
+                  <div
+                    key={day}
+                    className={cn(
+                      "rounded-xl p-3 sm:p-4 border text-center",
+                      dowTrades.length === 0 && "bg-muted/20 border-border/20",
+                      isProfit && "bg-profit/8 border-profit/20",
+                      isLoss && "bg-loss/5 border-loss/15",
+                      !isProfit && !isLoss && dowTrades.length > 0 && "bg-muted/30 border-border/30"
+                    )}
+                  >
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">{day}</p>
+                    {dowTrades.length > 0 ? (
+                      <>
+                        <p className={cn(
+                          "text-sm sm:text-base font-bold font-mono mb-1",
+                          isProfit ? "text-profit" : isLoss ? "text-loss/80" : "text-muted-foreground"
+                        )}>
+                          {isProfit ? '+' : ''}{fmt(pnl)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{dowTrades.length} trade{dowTrades.length !== 1 ? 's' : ''}</p>
+                        <p className={cn("text-xs font-medium mt-1", Number(wr) >= 50 ? "text-profit" : "text-loss/70")}>{wr}% W</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/40 mt-3">No trades</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Pair Analytics */}
+        {pairData.length > 0 && (
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in mb-6 sm:mb-8">
+            <h3 className="text-sm sm:text-base font-semibold mb-4 text-foreground/80">Pair Analytics</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-xs text-muted-foreground uppercase tracking-wide">
+                    <th className="text-left pb-3 pr-4">Pair</th>
+                    <th className="text-center pb-3 px-3">Trades</th>
+                    <th className="text-center pb-3 px-3">Wins</th>
+                    <th className="text-center pb-3 px-3">Win%</th>
+                    <th className="text-right pb-3 pl-3">Total P&L</th>
+                    <th className="text-right pb-3 pl-3">Avg P&L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pairData.map(row => (
+                    <tr key={row.pair} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
+                      <td className="py-2.5 pr-4 font-semibold">{row.pair}</td>
+                      <td className="py-2.5 px-3 text-center font-mono">{row.trades}</td>
+                      <td className="py-2.5 px-3 text-center text-profit font-mono">{row.wins}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded", Number(row.winRate) >= 50 ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss/80")}>{row.winRate}%</span>
+                      </td>
+                      <td className={cn("py-2.5 pl-3 text-right font-mono font-semibold", row.pnl > 0 ? "text-profit" : row.pnl < 0 ? "text-loss/80" : "text-muted-foreground")}>
+                        {row.pnl > 0 ? '+' : ''}{fmt(row.pnl)}
+                      </td>
+                      <td className={cn("py-2.5 pl-3 text-right font-mono text-sm", (row.pnl/row.trades) > 0 ? "text-profit" : "text-loss/80")}>
+                        {(row.pnl/row.trades) > 0 ? '+' : ''}{fmt(row.pnl/row.trades)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Trade Coach */}
+        {trades.length >= 5 && (
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in mb-6 sm:mb-8">
+            <div className="flex items-center gap-2 mb-5">
+              <h3 className="text-sm sm:text-base font-semibold text-foreground/80">Trade Coach</h3>
+              <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">Based on all {trades.length} trades</span>
+            </div>
+            {insights.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Not enough data yet for meaningful insights. Keep logging trades.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {insights.map(insight => {
+                  const isWarning = insight.type === 'warning';
+                  const isPositive = insight.type === 'positive';
+                  return (
+                    <div
+                      key={insight.id}
+                      className={cn(
+                        "rounded-xl p-4 border",
+                        isWarning && "bg-loss/5 border-loss/20",
+                        isPositive && "bg-profit/5 border-profit/20",
+                        !isWarning && !isPositive && "bg-muted/40 border-border/40"
+                      )}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className={cn(
+                          "mt-0.5 flex-shrink-0 rounded-full p-1",
+                          isWarning && "bg-loss/15 text-loss",
+                          isPositive && "bg-profit/15 text-profit",
+                          !isWarning && !isPositive && "bg-muted text-muted-foreground"
+                        )}>
+                          {isWarning && <AlertTriangle className="h-3.5 w-3.5" />}
+                          {isPositive && <TrendingUp className="h-3.5 w-3.5" />}
+                          {!isWarning && !isPositive && <Lightbulb className="h-3.5 w-3.5" />}
+                        </div>
+                        <div>
+                          <p className={cn(
+                            "text-xs font-semibold mb-1",
+                            isWarning && "text-loss",
+                            isPositive && "text-profit",
+                            !isWarning && !isPositive && "text-foreground"
+                          )}>
+                            {insight.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{insight.body}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Gemini AI Coaching */}
+        {trades.length >= 5 && (
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in mb-6 sm:mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h3 className="text-sm sm:text-base font-semibold text-foreground/80">AI Coaching Report</h3>
+                <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">Groq · Llama 3</span>
+                {gemini.apiKeys.length > 0 && (
+                  <span className="text-xs text-profit bg-profit/10 px-2 py-0.5 rounded-full">{gemini.apiKeys.length} key{gemini.apiKeys.length > 1 ? 's' : ''}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {gemini.report && !gemini.loading && (
+                  <button onClick={() => gemini.generate()} className="text-muted-foreground hover:text-primary p-1.5 transition-colors rounded-lg hover:bg-muted/50" title="Regenerate">
+                    <RefreshCcw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => { setShowPromptEditor(v => !v); setPromptDraft(gemini.promptTemplate); setShowKeyManager(false); }}
+                  className={cn("p-1.5 transition-colors rounded-lg hover:bg-muted/50", showPromptEditor ? "text-primary" : "text-muted-foreground hover:text-primary")}
+                  title="Edit prompt"
+                >
+                  <Lightbulb className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => { setShowKeyManager(v => !v); setKeyDraft(""); setShowPromptEditor(false); }}
+                  className={cn("p-1.5 transition-colors rounded-lg hover:bg-muted/50", showKeyManager ? "text-primary" : "text-muted-foreground hover:text-primary")}
+                  title="Manage API keys"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Key manager panel */}
+            {showKeyManager && (
+              <div className="mb-4 p-4 bg-muted/40 rounded-xl border border-border/40 space-y-3">
+                <p className="text-xs text-muted-foreground font-medium">Groq API Keys — stored in Firebase, picked randomly per request</p>
+                {gemini.apiKeys.map((k, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs font-mono bg-muted px-2 py-1 rounded flex-1 truncate text-muted-foreground">
+                      {k.slice(0, 8)}••••••••{k.slice(-4)}
+                    </span>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-loss/70 hover:text-loss" onClick={() => gemini.removeKey(k)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder="Paste Groq API key (gsk_...)"
+                    value={keyDraft}
+                    onChange={e => setKeyDraft(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                    onKeyDown={e => { if (e.key === 'Enter' && keyDraft) { gemini.addKey(keyDraft); setKeyDraft(""); } }}
+                  />
+                  <Button size="sm" className="h-8 text-xs whitespace-nowrap" disabled={!keyDraft} onClick={() => { gemini.addKey(keyDraft); setKeyDraft(""); }}>
+                    Add Key
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Prompt editor panel */}
+            {showPromptEditor && (
+              <div className="mb-4 p-4 bg-muted/40 rounded-xl border border-border/40 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-foreground/80">Customize AI Prompt</p>
+                  <button
+                    onClick={async () => { setPromptDraft(DEFAULT_PROMPT_TEMPLATE); await gemini.resetPromptTemplate(); }}
+                    className="text-xs text-muted-foreground hover:text-primary underline"
+                  >
+                    Reset to default
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Use <code className="bg-muted px-1 py-0.5 rounded text-[11px]">{"{{stats}}"}</code> and <code className="bg-muted px-1 py-0.5 rounded text-[11px]">{"{{insights}}"}</code> — these are replaced with your actual trade data when the report is generated.
+                </p>
+                <Textarea
+                  value={promptDraft}
+                  onChange={e => setPromptDraft(e.target.value)}
+                  className="text-xs font-mono min-h-[220px] resize-y"
+                  spellCheck={false}
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => { setShowPromptEditor(false); setPromptDraft(""); }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs gap-1.5"
+                    disabled={promptSaving || !promptDraft.trim()}
+                    onClick={async () => {
+                      setPromptSaving(true);
+                      await gemini.savePromptTemplate(promptDraft);
+                      setPromptSaving(false);
+                      setShowPromptEditor(false);
+                    }}
+                  >
+                    {promptSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    Save & Close
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* No keys yet */}
+            {gemini.apiKeys.length === 0 && !gemini.keysLoading && !showKeyManager && (
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <div className="p-3 bg-primary/10 rounded-full">
+                  <KeyRound className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Add your Gemini API keys</p>
+                  <p className="text-xs text-muted-foreground mt-1">Add up to 2 keys from console.groq.com — one is picked randomly each time to stay within free limits. Keys are saved to your Firebase account.</p>
+                </div>
+                <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowKeyManager(true)}>
+                  <Settings2 className="h-3.5 w-3.5" /> Manage Keys
+                </Button>
+              </div>
+            )}
+
+            {/* Loading */}
+            {gemini.loading && (
+              <div className="flex items-center gap-3 py-6 justify-center text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm">Gemini is reviewing your trades...</span>
+              </div>
+            )}
+
+            {/* Error */}
+            {gemini.error && !gemini.loading && (
+              <div className="flex items-center gap-2 p-3 bg-loss/10 rounded-xl border border-loss/20 text-loss text-sm">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                <span>{gemini.error}</span>
+              </div>
+            )}
+
+            {/* Report */}
+            {gemini.report && !gemini.loading && (
+              <div className="space-y-3">
+                {gemini.report.split(/\n\n+/).filter(p => p.trim()).map((para, i) => (
+                  <p key={i} className="text-sm text-foreground/80 leading-relaxed">{para.trim()}</p>
+                ))}
+                {gemini.isStale && (
+                  <p className="text-xs text-muted-foreground pt-2 border-t border-border/40">
+                    Trade data has changed.{" "}
+                    <button className="text-primary underline" onClick={() => gemini.generate()}>Regenerate report</button>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Keys loaded, no report yet */}
+            {gemini.apiKeys.length > 0 && !gemini.report && !gemini.loading && !gemini.error && (
+              <div className="flex justify-center py-4">
+                <Button onClick={() => gemini.generate()} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Generate Coaching Report
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Emotion Breakdown */}
+        {emotionData.length > 0 && (
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in mb-6 sm:mb-8">
+            <h3 className="text-sm sm:text-base font-semibold mb-4 text-foreground/80">Emotion Breakdown</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-xs text-muted-foreground uppercase tracking-wide">
+                    <th className="text-left pb-3 pr-4">Emotion</th>
+                    <th className="text-left pb-3 pr-4 hidden sm:table-cell">Description</th>
+                    <th className="text-center pb-3 px-3">Trades</th>
+                    <th className="text-center pb-3 px-3">Wins</th>
+                    <th className="text-center pb-3 px-3">Losses</th>
+                    <th className="text-center pb-3 px-3">Win%</th>
+                    <th className="text-right pb-3 pl-3">Total P&L</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {emotionData.map((row) => {
+                    const em = TRADE_EMOTIONS.find(e => e.value === row.emotion);
+                    const winPct = row.count > 0 ? ((row.wins / row.count) * 100).toFixed(0) : '0';
+                    return (
+                      <tr key={row.emotion} className="border-b border-border/30 hover:bg-muted/30 transition-colors">
+                        <td className="py-3 pr-4">
+                          <span className="font-medium">{em?.emoji} {em?.label ?? row.emotion}</span>
+                        </td>
+                        <td className="py-3 pr-4 hidden sm:table-cell">
+                          <span className="text-xs text-muted-foreground line-clamp-1">{em?.description}</span>
+                        </td>
+                        <td className="py-3 px-3 text-center font-mono">{row.count}</td>
+                        <td className="py-3 px-3 text-center text-profit font-mono">{row.wins}</td>
+                        <td className="py-3 px-3 text-center text-loss/80 font-mono">{row.losses}</td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={cn(
+                            "text-xs font-medium px-1.5 py-0.5 rounded",
+                            Number(winPct) >= 50 ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss/80"
+                          )}>
+                            {winPct}%
+                          </span>
+                        </td>
+                        <td className={cn(
+                          "py-3 pl-3 text-right font-mono font-semibold",
+                          row.pnl > 0 ? "text-profit" : row.pnl < 0 ? "text-loss/80" : "text-muted-foreground"
+                        )}>
+                          {row.pnl > 0 ? '+' : ''}{fmt(row.pnl)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

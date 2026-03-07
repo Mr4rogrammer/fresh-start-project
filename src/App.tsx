@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import TradeList from "./pages/TradeList";
+import JournalList from "./pages/JournalList";
 import Notes from "./pages/Notes";
 import Links from "./pages/Links";
 import Checklists from "./pages/Checklists";
@@ -35,6 +36,7 @@ const App = () => (
                 <Route path="/calendar" element={<Index />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/trades" element={<TradeList />} />
+                <Route path="/journals" element={<JournalList />} />
                 <Route path="/notes" element={<Notes />} />
                 <Route path="/checklists" element={<Checklists />} />
                 <Route path="/links" element={<Links />} />

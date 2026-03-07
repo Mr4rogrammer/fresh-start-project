@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trade } from "@/types/trade";
+import { Trade, TradeEmotion, TRADE_EMOTIONS } from "@/types/trade";
+import { Star } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Upload, X, Image, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,9 +35,14 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
     lotSize: '',
     direction: 'Buy' as 'Buy' | 'Sell',
     profit: '',
+    emotion: '' as TradeEmotion | '',
+    strategy: '',
+    rating: 0,
     notes: '',
     screenshotUrl: '',
     screenshotFileId: '',
+    mfe: '',
+    mae: '',
   });
 
   const [uploading, setUploading] = useState(false);
@@ -59,10 +65,15 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
         lotSize: editingTrade.lotSize.toString(),
         direction: editingTrade.direction,
         profit: editingTrade.profit.toString(),
+        emotion: editingTrade.emotion || '',
+        strategy: editingTrade.strategy || '',
+        rating: editingTrade.rating || 0,
         notes: editingTrade.notes || '',
         fees: editingTrade.fees.toString(),
         screenshotUrl: editingTrade.screenshotUrl || '',
         screenshotFileId: editingTrade.screenshotFileId || '',
+        mfe: editingTrade.mfe?.toString() || '',
+        mae: editingTrade.mae?.toString() || '',
       });
 
       // Mark that we have an existing screenshot
@@ -167,9 +178,14 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
       fees: "",
       direction: 'Buy',
       profit: '',
+      emotion: '',
+      strategy: '',
+      rating: 0,
       notes: '',
       screenshotUrl: '',
       screenshotFileId: '',
+      mfe: '',
+      mae: '',
     });
     setPreviewUrl(null);
     onClose();
@@ -188,9 +204,14 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
       lotSize: parseFloat(formData.lotSize),
       direction: formData.direction,
       profit: parseFloat(formData.profit),
+      emotion: formData.emotion || undefined,
+      strategy: formData.strategy || undefined,
+      rating: formData.rating || undefined,
       notes: formData.notes,
       screenshotUrl: formData.screenshotUrl || '',
       screenshotFileId: formData.screenshotFileId || '',
+      mfe: formData.mfe ? parseFloat(formData.mfe) : undefined,
+      mae: formData.mae ? parseFloat(formData.mae) : undefined,
     });
 
     clearFormDataAndClose();
@@ -230,6 +251,28 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
                 <SelectContent>
                   <SelectItem value="Buy">Buy</SelectItem>
                   <SelectItem value="Sell">Sell</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="emotion">Emotion (Optional)</Label>
+              <Select
+                value={formData.emotion}
+                onValueChange={(value: TradeEmotion) => setFormData({ ...formData, emotion: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="How were you feeling?" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRADE_EMOTIONS.map((e) => (
+                    <SelectItem key={e.value} value={e.value}>
+                      <div className="flex flex-col py-0.5">
+                        <span className="font-medium">{e.emoji} {e.label}</span>
+                        <span className="text-xs text-muted-foreground leading-snug">{e.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -310,6 +353,56 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
                 onChange={(e) => setFormData({ ...formData, lotSize: e.target.value })}
                 required
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="mfe">MFE — Max Favorable ($) <span className="text-muted-foreground font-normal text-xs">Optional</span></Label>
+              <Input
+                id="mfe"
+                type="number"
+                step="0.01"
+                placeholder="Peak profit during trade"
+                value={formData.mfe}
+                onChange={(e) => setFormData({ ...formData, mfe: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="mae">MAE — Max Adverse ($) <span className="text-muted-foreground font-normal text-xs">Optional</span></Label>
+              <Input
+                id="mae"
+                type="number"
+                step="0.01"
+                placeholder="Worst drawdown during trade"
+                value={formData.mae}
+                onChange={(e) => setFormData({ ...formData, mae: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Trade Rating (Optional)</Label>
+              <div className="flex items-center gap-1 mt-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, rating: formData.rating === star ? 0 : star })}
+                    className="p-0.5 transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`h-6 w-6 transition-colors ${star <= formData.rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                    />
+                  </button>
+                ))}
+                {formData.rating > 0 && (
+                  <span className="text-xs text-muted-foreground ml-1">
+                    {['', 'Poor', 'Below avg', 'Average', 'Good', 'Excellent'][formData.rating]}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

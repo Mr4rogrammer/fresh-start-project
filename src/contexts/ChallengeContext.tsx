@@ -8,6 +8,7 @@ interface Challenge {
   openingBalance: number;
   currentBalance?: number;
   status?: string;
+  dailyLossLimit?: number;
 }
 
 interface ChallengeContextType {

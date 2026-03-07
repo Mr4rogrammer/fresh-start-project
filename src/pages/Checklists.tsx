@@ -561,9 +561,20 @@ const Checklists = () => {
   }, [user]);
 
   const countItems = (items: ChecklistItem[]): { total: number; completed: number } => {
-    // Only count root-level items, not children
-    const total = items?.length || 0;
-    const completed = items?.filter(item => item.completed).length || 0;
+    let total = 0;
+    let completed = 0;
+    const walk = (list: ChecklistItem[]) => {
+      for (const item of list || []) {
+        const isSection = (item.children?.length ?? 0) > 0;
+        // Skip section headers (items with children) and plain text items
+        if (!isSection && item.type !== 'text') {
+          total++;
+          if (item.completed) completed++;
+        }
+        if (item.children?.length) walk(item.children);
+      }
+    };
+    walk(items);
     return { total, completed };
   };
 

@@ -2,9 +2,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Journal } from "@/types/trade";
+import { Journal, TradeEmotion, TRADE_EMOTIONS, JournalEntryType, JOURNAL_ENTRY_TYPES } from "@/types/trade";
 import { useState, useEffect, useRef } from "react";
 import { X, Image, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadToGoogleDrive, deleteFromGoogleDrive } from "@/lib/googleDrive";
 import { DriveImage } from "@/components/DriveImage";
@@ -25,6 +26,8 @@ export const AddJournalModal = ({ open, onClose, onSave, editingJournal, initial
   const [formData, setFormData] = useState({
     date: initialDate || new Date().toISOString().split('T')[0],
     notes: '',
+    emotion: '' as TradeEmotion | '',
+    entryType: '' as JournalEntryType | '',
     screenshotUrl: '',
     screenshotFileId: '',
   });
@@ -43,6 +46,8 @@ export const AddJournalModal = ({ open, onClose, onSave, editingJournal, initial
       setFormData({
         date: editingJournal.date,
         notes: editingJournal.notes || '',
+        emotion: editingJournal.emotion || '',
+        entryType: editingJournal.entryType || '',
         screenshotUrl: editingJournal.screenshotUrl || '',
         screenshotFileId: editingJournal.screenshotFileId || '',
       });
@@ -134,6 +139,8 @@ export const AddJournalModal = ({ open, onClose, onSave, editingJournal, initial
     setFormData({
       date: new Date().toISOString().split('T')[0],
       notes: '',
+      emotion: '',
+      entryType: '',
       screenshotUrl: '',
       screenshotFileId: '',
     });
@@ -152,6 +159,8 @@ export const AddJournalModal = ({ open, onClose, onSave, editingJournal, initial
     onSave({
       date: formData.date,
       notes: formData.notes,
+      emotion: formData.emotion || undefined,
+      entryType: formData.entryType || undefined,
       screenshotUrl: formData.screenshotUrl || '',
       screenshotFileId: formData.screenshotFileId || '',
     });
@@ -231,6 +240,47 @@ export const AddJournalModal = ({ open, onClose, onSave, editingJournal, initial
                 className="hidden"
               />
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="entryType">Entry Type (Optional)</Label>
+            <Select
+              value={formData.entryType}
+              onValueChange={(value: JournalEntryType) => setFormData({ ...formData, entryType: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select entry type..." />
+              </SelectTrigger>
+              <SelectContent>
+                {JOURNAL_ENTRY_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.emoji} {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="emotion">Emotion (Optional)</Label>
+            <Select
+              value={formData.emotion}
+              onValueChange={(value: TradeEmotion) => setFormData({ ...formData, emotion: value })}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="How were you feeling?" />
+              </SelectTrigger>
+              <SelectContent>
+                {TRADE_EMOTIONS.map((e) => (
+                  <SelectItem key={e.value} value={e.value}>
+                    <div className="flex flex-col py-0.5">
+                      <span className="font-medium">{e.emoji} {e.label}</span>
+                      <span className="text-xs text-muted-foreground leading-snug">{e.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
