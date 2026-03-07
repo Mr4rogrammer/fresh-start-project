@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { WorldClocks } from "@/components/WorldClocks";
 import { TimeConverter } from "@/components/TimeConverter";
+import { KillZoneConfig } from "@/components/KillZoneConfig";
 
 const WorldClock = () => {
   const { user, loading } = useAuth();
@@ -35,6 +36,9 @@ const WorldClock = () => {
         <div className="animate-fade-in">
           <WorldClocks />
           <TimeConverter />
+          <div className="mt-8">
+            <KillZoneConfig />
+          </div>
         </div>
       </div>
     </div>

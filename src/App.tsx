@@ -17,7 +17,15 @@ import Links from "./pages/Links";
 import Checklists from "./pages/Checklists";
 import Profile from "./pages/Profile";
 import WorldClock from "./pages/WorldClock";
+import Model from "./pages/Model";
+import Reminders from "./pages/Reminders";
+import RiskCalculator from "./pages/RiskCalculator";
+import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
+import { KillZoneAlertProvider } from "@/components/KillZoneAlertProvider";
+import { KillZoneCountdown } from "@/components/KillZoneCountdown";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { WeeklyReportScheduler } from "@/components/WeeklyReportScheduler";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +38,9 @@ const App = () => (
         <BrowserRouter>
           <ChallengeProvider>
             <DataProvider>
+              <KillZoneAlertProvider />
+              <KillZoneCountdown />
+              <WeeklyReportScheduler />
               <Routes>
                 <Route path="/" element={<Auth />} />
                 <Route path="/home" element={<Home />} />
@@ -42,12 +53,17 @@ const App = () => (
                 <Route path="/links" element={<Links />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/world-clock" element={<WorldClock />} />
+                <Route path="/model" element={<Model />} />
+                <Route path="/reminders" element={<Reminders />} />
+                <Route path="/risk-calculator" element={<RiskCalculator />} />
+                <Route path="/goals" element={<Goals />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </DataProvider>
           </ChallengeProvider>
         </BrowserRouter>
+        <PWAInstallPrompt />
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>

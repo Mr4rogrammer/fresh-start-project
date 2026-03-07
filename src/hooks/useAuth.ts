@@ -32,6 +32,8 @@ export const useAuth = () => {
 
       // Request Google Drive scope for file access
       provider.addScope('https://www.googleapis.com/auth/drive.file');
+      // Request Google Calendar scope for reminders
+      provider.addScope('https://www.googleapis.com/auth/calendar.events');
 
       // Force account selection
       provider.setCustomParameters({
@@ -75,6 +77,7 @@ export const useAuth = () => {
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('https://www.googleapis.com/auth/drive.file');
+      provider.addScope('https://www.googleapis.com/auth/calendar.events');
 
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -95,12 +98,23 @@ export const useAuth = () => {
   };
 
   const getAccessToken = async (): Promise<string | null> => {
-    // Return existing token if available
+    // If we have a token, validate it's still working
     if (googleAccessToken) {
-      return googleAccessToken;
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=' + googleAccessToken);
+        if (res.ok) {
+          return googleAccessToken;
+        }
+      } catch {
+        // Token check failed, will refresh below
+      }
+      // Token is expired/invalid — clear it and refresh
+      googleAccessToken = null;
+      sessionStorage.removeItem('googleAccessToken');
+      setAccessToken(null);
     }
 
-    // Try to refresh
+    // Get a fresh token via popup
     return refreshAccessToken();
   };
 

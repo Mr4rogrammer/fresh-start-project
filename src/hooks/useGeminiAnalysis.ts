@@ -29,12 +29,13 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export function useGeminiAnalysis(trades: Trade[], userId?: string) {
+export function useGeminiAnalysis(trades: Trade[], userId?: string, enabled: boolean = true) {
   const [apiKeys, setApiKeys] = useState<string[]>([]);
   const [keysLoading, setKeysLoading] = useState(false);
   const [promptTemplate, setPromptTemplate] = useState(DEFAULT_PROMPT_TEMPLATE);
   const [promptLoading, setPromptLoading] = useState(false);
   const [report, setReport] = useState<string>(() => {
+    if (!enabled) return "";
     try {
       const cached: CacheEntry = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
       if (cached && cached.tradeHash === hashTrades(trades)) return cached.report;
@@ -44,9 +45,9 @@ export function useGeminiAnalysis(trades: Trade[], userId?: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load keys + prompt from Firebase
+  // Load keys + prompt from Firebase only when enabled
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !enabled) return;
     setKeysLoading(true);
     setPromptLoading(true);
 
@@ -65,7 +66,16 @@ export function useGeminiAnalysis(trades: Trade[], userId?: string) {
       })
       .catch(() => {})
       .finally(() => setPromptLoading(false));
-  }, [userId]);
+  }, [userId, enabled]);
+
+  // Load cached report when enabled
+  useEffect(() => {
+    if (!enabled) return;
+    try {
+      const cached: CacheEntry = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (cached && cached.tradeHash === hashTrades(trades)) setReport(cached.report);
+    } catch {}
+  }, [enabled, trades]);
 
   const saveKeys = useCallback(async (keys: string[]) => {
     if (!userId) return;

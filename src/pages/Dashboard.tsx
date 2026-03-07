@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useCurrency, SUPPORTED_CURRENCIES } from "@/hooks/useCurrency";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { Trade, TRADE_EMOTIONS } from "@/types/trade";
 import { analyzeTrades, TradeInsight } from "@/lib/tradeAnalyzer";
 import { useGeminiAnalysis, DEFAULT_PROMPT_TEMPLATE } from "@/hooks/useGeminiAnalysis";
+import { useKillZones } from "@/hooks/useKillZones";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Navbar } from "@/components/Navbar";
@@ -24,12 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, RefreshCw, ChevronDown, AlertTriangle, TrendingUp, Lightbulb, Sparkles, Settings2, Loader2, RefreshCcw, KeyRound } from "lucide-react";
-import { format } from "date-fns";
+import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, RefreshCw, ChevronDown, AlertTriangle, TrendingUp, Lightbulb, Sparkles, Settings2, Loader2, RefreshCcw, KeyRound, Target, Trophy, Flame, CalendarDays } from "lucide-react";
+import { format, parseISO, isWithinInterval } from "date-fns";
+import { ref, get } from "firebase/database";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { toast } from "sonner";
+import { sendTelegramNotification } from "@/lib/telegram";
+import { TradingHeatmap } from "@/components/TradingHeatmap";
+import { PerformanceCard } from "@/components/PerformanceCard";
+import { TradingQuotes } from "@/components/TradingQuotes";
 import {
   LineChart,
   Line,
@@ -46,10 +52,22 @@ import {
 const PROFIT_COLOR = 'hsl(155,55%,52%)';
 const LOSS_COLOR = 'hsl(15,60%,58%)';
 
+interface Goal {
+  id: string;
+  type: string;
+  startDate: string;
+  endDate: string;
+  target: number;
+  label: string;
+  metric: "profit" | "trades" | "winrate";
+  createdAt: string;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
   const { selectedChallenge } = useChallenge();
   const { getTrades } = useData();
+  const { activeZones } = useKillZones();
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const now = new Date();
@@ -73,12 +91,37 @@ const Dashboard = () => {
 
   const sym = currentCurrencyInfo.symbol;
 
+  // ─── Goals state ───────────────────────────────────────────
+  const [dashboardGoals, setDashboardGoals] = useState<Goal[]>([]);
+  const notifiedGoalsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!selectedChallenge) {
       navigate("/home");
     }
   }, [selectedChallenge, navigate]);
+
+  // Load goals from Firebase
+  useEffect(() => {
+    if (!user) return;
+    const loadGoals = async () => {
+      try {
+        const goalsRef = ref(db, `users/${user.uid}/goals`);
+        const snapshot = await get(goalsRef);
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const arr: Goal[] = Object.entries(data).map(([id, g]: [string, any]) => ({ id, ...g }));
+          arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          setDashboardGoals(arr);
+        } else {
+          setDashboardGoals([]);
+        }
+      } catch (e) {
+        console.error("Error loading goals:", e);
+      }
+    };
+    loadGoals();
+  }, [user]);
 
   // Get trades from context instead of fetching
   const trades = selectedChallenge ? getTrades(selectedChallenge.id) : [];
@@ -282,6 +325,48 @@ const Dashboard = () => {
 
   const totalFees = filteredTrades.reduce((sum, trade) => sum + trade.fees, 0);
 
+  // Streak calculation (sorted oldest to newest)
+  const streakData = (() => {
+    const sorted = [...filteredTrades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let currentStreak = 0;
+    let currentType: 'win' | 'loss' | 'none' = 'none';
+    let bestWinStreak = 0;
+    let worstLossStreak = 0;
+    let tempStreak = 0;
+    let tempType: 'win' | 'loss' | 'none' = 'none';
+
+    for (const trade of sorted) {
+      const result = trade.profit > 0 ? 'win' : trade.profit < 0 ? 'loss' : 'none';
+      if (result === 'none') continue;
+      if (result === tempType) {
+        tempStreak++;
+      } else {
+        tempStreak = 1;
+        tempType = result;
+      }
+      if (tempType === 'win') bestWinStreak = Math.max(bestWinStreak, tempStreak);
+      if (tempType === 'loss') worstLossStreak = Math.max(worstLossStreak, tempStreak);
+    }
+
+    // Current streak from the end
+    currentStreak = 0;
+    currentType = 'none';
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const result = sorted[i].profit > 0 ? 'win' : sorted[i].profit < 0 ? 'loss' : 'none';
+      if (result === 'none') continue;
+      if (currentType === 'none') {
+        currentType = result;
+        currentStreak = 1;
+      } else if (result === currentType) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    return { currentStreak, currentType, bestWinStreak, worstLossStreak };
+  })();
+
   // Prepare chart data - cumulative profit per day
   const chartData = (() => {
     if (filteredTrades.length === 0) return [];
@@ -421,9 +506,69 @@ const Dashboard = () => {
     return maxDD;
   })();
 
+  // ─── Goal progress helper ─────────────────────────────────────────
+  const getGoalProgress = useCallback((goal: Goal) => {
+    if (!selectedChallenge) return { current: 0, percentage: 0, periodTrades: 0 };
+    const allTrades = getTrades(selectedChallenge.id);
+    const start = parseISO(goal.startDate);
+    const end = parseISO(goal.endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const periodTrades = allTrades.filter((t) => {
+      try {
+        const d = parseISO(t.date);
+        return isWithinInterval(d, { start, end });
+      } catch { return false; }
+    });
+
+    let current = 0;
+    if (goal.metric === "profit") {
+      current = periodTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+    } else if (goal.metric === "trades") {
+      current = periodTrades.length;
+    } else if (goal.metric === "winrate") {
+      if (periodTrades.length === 0) return { current: 0, percentage: 0, periodTrades: 0 };
+      const wins = periodTrades.filter((t) => t.profit > 0).length;
+      current = Math.round((wins / periodTrades.length) * 100);
+    }
+    const percentage = goal.target > 0 ? Math.min(Math.round((current / goal.target) * 100), 100) : 0;
+    return { current, percentage, periodTrades: periodTrades.length };
+  }, [selectedChallenge, getTrades]);
+
+  // ─── Goal completion notifications ────────────────────────────────
+  useEffect(() => {
+    if (dashboardGoals.length === 0 || !selectedChallenge) return;
+    dashboardGoals.forEach((goal) => {
+      const { percentage } = getGoalProgress(goal);
+      if (percentage >= 100 && !notifiedGoalsRef.current.has(goal.id)) {
+        notifiedGoalsRef.current.add(goal.id);
+        toast.success(`🎯 Goal achieved: ${goal.label}!`, { duration: 6000 });
+        // Browser notification
+        if ("Notification" in window && Notification.permission === "granted") {
+          try {
+            const n = new Notification("🎯 Goal Achieved!", {
+              body: `${goal.label} — You've reached your target!`,
+              icon: "/favicon.ico",
+              tag: `goal-${goal.id}`,
+            });
+            setTimeout(() => n.close(), 10000);
+          } catch {}
+        }
+        // Telegram notification
+        if (user?.uid) {
+          sendTelegramNotification(
+            user.uid,
+            `🎯 <b>Goal Achieved!</b>\n${goal.label} — You've reached your target!`
+          );
+        }
+      }
+    });
+  }, [dashboardGoals, trades, selectedChallenge, getGoalProgress]);
+
   // Trade Coach — runs on ALL trades for the challenge, not just filtered
   const insights: TradeInsight[] = analyzeTrades(trades);
-  const gemini = useGeminiAnalysis(trades, user?.uid);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const gemini = useGeminiAnalysis(trades, user?.uid, aiEnabled);
   const [showKeyManager, setShowKeyManager] = useState(false);
   const [showPromptEditor, setShowPromptEditor] = useState(false);
   const [keyDraft, setKeyDraft] = useState("");
@@ -516,7 +661,18 @@ const Dashboard = () => {
         <div className="mb-6 sm:mb-8 animate-slide-down">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+                {activeZones.length > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-xs font-semibold text-red-500 animate-fade-in">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                    </span>
+                    {activeZones.map(z => z.name).join(" · ")}
+                  </span>
+                )}
+              </div>
               <p className="text-muted-foreground text-sm mt-1">
                 Analyze your trading performance
               </p>
@@ -571,9 +727,20 @@ const Dashboard = () => {
                 <FileJson className="h-4 w-4" />
                 JSON
               </Button>
+              <PerformanceCard
+                trades={filteredTrades}
+                openingBalance={selectedChallenge?.openingBalance || 0}
+                dateRange={dateRange}
+                userName={"The Hidden FT"}
+                currencySymbol={sym}
+                formatValue={fmt}
+              />
             </div>
           </div>
         </div>
+
+        {/* ─── Trading Quote ──────────────────────────── */}
+        <TradingQuotes />
 
           {/* Filters */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-6 bg-card/80 backdrop-blur-sm rounded-2xl border border-border/50 mb-6 sm:mb-8">
@@ -762,7 +929,120 @@ const Dashboard = () => {
             })()}
           </div>
 
+          <div className="animate-scale-in" style={{ animationDelay: "0.5s" }}>
+            <StatsCard
+              title="Current Streak"
+              value={streakData.currentStreak > 0 ? `${streakData.currentStreak}${streakData.currentType === 'win' ? 'W' : 'L'}` : '—'}
+              subtitle={streakData.currentType === 'win' ? 'Winning streak' : streakData.currentType === 'loss' ? 'Losing streak' : 'No trades'}
+              variant={streakData.currentType === 'win' ? 'profit' : streakData.currentType === 'loss' ? 'loss' : 'neutral'}
+            />
+          </div>
+
+          <div className="animate-scale-in" style={{ animationDelay: "0.55s" }}>
+            <StatsCard
+              title="Best Win Streak"
+              value={streakData.bestWinStreak > 0 ? `${streakData.bestWinStreak}W` : '—'}
+              subtitle="Consecutive wins"
+              variant="profit"
+            />
+          </div>
+
+          <div className="animate-scale-in" style={{ animationDelay: "0.6s" }}>
+            <StatsCard
+              title="Worst Loss Streak"
+              value={streakData.worstLossStreak > 0 ? `${streakData.worstLossStreak}L` : '—'}
+              subtitle="Consecutive losses"
+              variant="loss"
+            />
+          </div>
+
         </div>
+
+        {/* ─── Active Goals Progress ──────────────────────────── */}
+        {dashboardGoals.length > 0 && (
+          <div className="mb-6 sm:mb-8 animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm sm:text-base font-semibold text-foreground/80 flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                Active Goals
+              </h3>
+              <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => navigate("/goals")}>
+                View All
+                <ChevronDown className="h-3 w-3 -rotate-90" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              {dashboardGoals.slice(0, 6).map((goal) => {
+                const { current, percentage, periodTrades } = getGoalProgress(goal);
+                const isComplete = percentage >= 100;
+                const suffix = goal.metric === "profit" ? "$" : goal.metric === "winrate" ? "%" : "";
+                const formatRange = () => {
+                  try {
+                    return `${format(parseISO(goal.startDate), "MMM d")} – ${format(parseISO(goal.endDate), "MMM d")}`;
+                  } catch { return ""; }
+                };
+                return (
+                  <div
+                    key={goal.id}
+                    className={cn(
+                      "bg-card/80 backdrop-blur-sm rounded-2xl p-4 border border-border/50 shadow-sm hover:shadow-md transition-all cursor-pointer",
+                      isComplete && "border-profit/40 bg-profit/5"
+                    )}
+                    onClick={() => navigate("/goals")}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={cn(
+                          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+                          isComplete ? "bg-profit/20" : "bg-primary/10"
+                        )}>
+                          {isComplete ? <Trophy className="h-3.5 w-3.5 text-profit" /> : <Target className="h-3.5 w-3.5 text-primary" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{goal.label}</p>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <CalendarDays className="h-2.5 w-2.5" />
+                            {formatRange()} · {periodTrades} trade{periodTrades !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "text-xs font-bold tabular-nums",
+                        isComplete ? "text-profit" : percentage >= 50 ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        {percentage}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          isComplete ? "bg-profit" : "bg-primary"
+                        )}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {goal.metric === "profit" ? `$${current.toFixed(2)}` : `${current}${suffix}`}
+                        <span className="text-muted-foreground/60"> / {goal.metric === "profit" ? `$${goal.target}` : `${goal.target}${suffix}`}</span>
+                      </span>
+                      {isComplete && (
+                        <span className="flex items-center gap-1 text-[10px] text-profit font-medium">
+                          <Flame className="h-3 w-3" />
+                          Achieved!
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Trading Heatmap ──────────────────────────── */}
+        {filteredTrades.length > 0 && <TradingHeatmap trades={filteredTrades} />}
 
         {/* Charts row 1: Balance Progression + Daily P&L */}
         {chartData.length > 0 && (
@@ -1051,7 +1331,24 @@ const Dashboard = () => {
         )}
 
         {/* Gemini AI Coaching */}
-        {trades.length >= 5 && (
+        {trades.length >= 5 && !aiEnabled && (
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in mb-6 sm:mb-8">
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <div className="p-3 bg-primary/10 rounded-full">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">AI Coaching Report</p>
+                <p className="text-xs text-muted-foreground mt-1">Get AI-powered analysis of your trading performance</p>
+              </div>
+              <Button size="sm" className="gap-2" onClick={() => setAiEnabled(true)}>
+                <Sparkles className="h-4 w-4" />
+                Open Analysis
+              </Button>
+            </div>
+          </div>
+        )}
+        {trades.length >= 5 && aiEnabled && (
           <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-border/50 shadow-lg animate-fade-in mb-6 sm:mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -1081,6 +1378,13 @@ const Dashboard = () => {
                   title="Manage API keys"
                 >
                   <Settings2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => { setAiEnabled(false); setShowKeyManager(false); setShowPromptEditor(false); }}
+                  className="text-muted-foreground hover:text-loss p-1.5 transition-colors rounded-lg hover:bg-muted/50"
+                  title="Close AI section"
+                >
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>

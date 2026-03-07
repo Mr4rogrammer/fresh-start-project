@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ref, push, remove, update } from "firebase/database";
 import { db } from "@/lib/firebase";
@@ -21,13 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Calendar, RefreshCw, Plus, BookOpen, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, RefreshCw, Plus, BookOpen, AlertTriangle, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+import { sendTelegramNotification } from "@/lib/telegram";
 import UndoToast from "@/components/UndoToast";
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 import { cn } from "@/lib/utils";
 import { useCurrency, SUPPORTED_CURRENCIES } from "@/hooks/useCurrency";
+import { useTradingRules, checkRules, RuleViolation } from "@/hooks/useTradingRules";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertTriangle as RuleWarningIcon } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -60,6 +64,12 @@ const Index = () => {
     handleVerificationSuccess,
     cancelVerification,
   } = useTotpVerification();
+
+  const { rules } = useTradingRules();
+  const [ruleViolations, setRuleViolations] = useState<RuleViolation[]>([]);
+  const [ruleWarningOpen, setRuleWarningOpen] = useState(false);
+  const [pendingTradeDate, setPendingTradeDate] = useState<string | null>(null);
+  const overtradeAlertSentRef = useRef<string | null>(null); // tracks which date we already sent Telegram for
 
   const monthNames = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
@@ -192,6 +202,29 @@ const Index = () => {
     requireVerification(performDelete);
   };
 
+  /** Open new-trade modal with rule check */
+  const openNewTradeModal = (date?: string) => {
+    const tradeDate = date || new Date().toISOString().split('T')[0];
+    setEditingTrade(null);
+    setSelectedDate(tradeDate);
+
+    // Check trading rules
+    const violations = checkRules(rules, trades, tradeDate);
+    if (violations.length > 0) {
+      setRuleViolations(violations);
+      setPendingTradeDate(tradeDate);
+      setRuleWarningOpen(true);
+      return;
+    }
+    setIsAddModalOpen(true);
+  };
+
+  const handleRuleOverride = () => {
+    setRuleWarningOpen(false);
+    setRuleViolations([]);
+    setIsAddModalOpen(true);
+  };
+
   const handleEditTrade = (trade: Trade) => {
     setEditingTrade(trade);
     setIsTradeModalOpen(false);
@@ -301,8 +334,7 @@ const Index = () => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (isArchived) return;
       if (e.key === 'n' || e.key === 'N') {
-        setEditingTrade(null);
-        setIsAddModalOpen(true);
+        openNewTradeModal();
       }
       if (e.key === 'j' || e.key === 'J') {
         setEditingJournal(null);
@@ -502,6 +534,52 @@ const Index = () => {
           );
         })()}
 
+        {/* Overtrade Warning Banner */}
+        {(() => {
+          if (!rules.enabled || rules.maxTradesPerDay <= 0) return null;
+          const todayStr = new Date().toISOString().split('T')[0];
+          const todayTradeCount = trades.filter(t => t.date === todayStr).length;
+          if (todayTradeCount < rules.maxTradesPerDay) return null;
+
+          const isOver = todayTradeCount > rules.maxTradesPerDay;
+          const isAt = todayTradeCount === rules.maxTradesPerDay;
+
+          // Send Telegram alert once per day when limit is reached/exceeded
+          if (user && overtradeAlertSentRef.current !== todayStr) {
+            overtradeAlertSentRef.current = todayStr;
+            const todayPnL = trades.filter(t => t.date === todayStr).reduce((s, t) => s + t.profit, 0);
+            sendTelegramNotification(
+              user.uid,
+              `⚠️ <b>Overtrade Alert!</b>\n\n` +
+              `You've taken <b>${todayTradeCount}</b> trade${todayTradeCount !== 1 ? 's' : ''} today (limit: <b>${rules.maxTradesPerDay}</b>).\n` +
+              `Today's P&L: <b>${todayPnL >= 0 ? '+' : ''}$${todayPnL.toFixed(2)}</b>\n\n` +
+              `🛑 Step away from the screens and protect your capital.`
+            );
+          }
+
+          return (
+            <div className={cn(
+              "mb-3 flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm animate-fade-in",
+              isOver
+                ? "bg-loss/15 border border-loss/40 text-loss"
+                : "bg-amber-500/10 border border-amber-500/30 text-amber-500"
+            )}>
+              <ShieldAlert className="h-5 w-5 flex-shrink-0 animate-pulse" />
+              <div className="flex-1">
+                <span className="font-semibold">
+                  {isOver ? "Overtrade Warning!" : "Daily Trade Limit Reached"}
+                </span>
+                <span className="ml-1.5">
+                  — You've taken{" "}
+                  <span className="font-mono font-bold">{todayTradeCount}</span> trade{todayTradeCount !== 1 ? 's' : ''} today
+                  (limit: <span className="font-mono font-bold">{rules.maxTradesPerDay}</span>).
+                  {isOver ? " Stop trading and review your plan." : " Consider stopping for the day."}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Calendar Grid */}
         <div className="flex-1 flex flex-col min-h-0 animate-scale-in">
           <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-3">
@@ -547,9 +625,8 @@ const Index = () => {
           onDelete={deleteTrade}
           onEdit={handleEditTrade}
           openAddTrade={() => {
-            setEditingTrade(null);
             setIsTradeModalOpen(false);
-            setIsAddModalOpen(true);
+            openNewTradeModal(selectedDate || undefined);
           }}
           openAddJournal={() => {
             setEditingJournal(null);
@@ -567,7 +644,7 @@ const Index = () => {
           onClose={() => setIsEntryDialogOpen(false)}
           onSelectTrade={() => {
             setIsEntryDialogOpen(false);
-            setIsAddModalOpen(true);
+            openNewTradeModal(selectedDate || undefined);
           }}
           onSelectJournal={() => {
             setIsEntryDialogOpen(false);
@@ -592,6 +669,36 @@ const Index = () => {
           initialDate={selectedDate || undefined}
         />
 
+        {/* Rule Violation Warning */}
+        <Dialog open={ruleWarningOpen} onOpenChange={setRuleWarningOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-loss">
+                <RuleWarningIcon className="h-5 w-5" />
+                Trading Rule Violation
+              </DialogTitle>
+              <DialogDescription className="pt-1">
+                Your trading rules have been triggered:
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              {ruleViolations.map((v, i) => (
+                <div key={i} className="bg-loss/10 border border-loss/20 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-loss">{v.rule}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{v.message}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Discipline is key. Are you sure you want to override?
+            </p>
+            <div className="flex gap-3 justify-end pt-1">
+              <Button variant="outline" onClick={() => setRuleWarningOpen(false)}>Stop Trading</Button>
+              <Button variant="destructive" onClick={handleRuleOverride}>Override & Add</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <TotpVerificationModal
           open={isVerificationRequired}
           onClose={cancelVerification}
@@ -600,6 +707,46 @@ const Index = () => {
           description="Enter your 6-digit code to confirm"
         />
       </div>
+
+      {/* Quick Stats Widget */}
+      {(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayTrades = trades.filter(t => t.date === today);
+        if (todayTrades.length === 0) return null;
+        const todayPnL = todayTrades.reduce((s, t) => s + t.profit, 0);
+        const todayWins = todayTrades.filter(t => t.profit > 0).length;
+        const todayWinRate = todayTrades.length > 0 ? Math.round((todayWins / todayTrades.length) * 100) : 0;
+        return (
+          <div className="fixed bottom-6 left-6 z-40 animate-fade-in">
+            <div className="bg-card/90 backdrop-blur-md border border-border/50 rounded-2xl shadow-lg px-4 py-2.5 flex items-center gap-4">
+              <div className="text-center">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">Today</p>
+                <p className={cn(
+                  "text-sm font-bold font-mono tabular-nums",
+                  todayPnL > 0 ? "text-profit" : todayPnL < 0 ? "text-loss/80" : "text-muted-foreground"
+                )}>
+                  {todayPnL >= 0 ? "+" : ""}{fmt(todayPnL)}
+                </p>
+              </div>
+              <div className="w-px h-6 bg-border/50" />
+              <div className="text-center">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">Trades</p>
+                <p className="text-sm font-bold font-mono tabular-nums">{todayTrades.length}</p>
+              </div>
+              <div className="w-px h-6 bg-border/50" />
+              <div className="text-center">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">Win%</p>
+                <p className={cn(
+                  "text-sm font-bold font-mono tabular-nums",
+                  todayWinRate >= 50 ? "text-profit" : "text-loss/80"
+                )}>
+                  {todayWinRate}%
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* FAB - Quick Add */}
       {!isArchived && (
@@ -617,7 +764,7 @@ const Index = () => {
           <Button
             size="sm"
             className="h-11 px-4 gap-2 shadow-lg rounded-full"
-            onClick={() => { setEditingTrade(null); setSelectedDate(new Date().toISOString().split('T')[0]); setIsAddModalOpen(true); }}
+            onClick={() => openNewTradeModal()}
             title="New Trade (N)"
           >
             <Plus className="h-4 w-4" />

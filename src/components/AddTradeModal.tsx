@@ -41,8 +41,6 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
     notes: '',
     screenshotUrl: '',
     screenshotFileId: '',
-    mfe: '',
-    mae: '',
   });
 
   const [uploading, setUploading] = useState(false);
@@ -72,8 +70,6 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
         fees: editingTrade.fees.toString(),
         screenshotUrl: editingTrade.screenshotUrl || '',
         screenshotFileId: editingTrade.screenshotFileId || '',
-        mfe: editingTrade.mfe?.toString() || '',
-        mae: editingTrade.mae?.toString() || '',
       });
 
       // Mark that we have an existing screenshot
@@ -184,8 +180,6 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
       notes: '',
       screenshotUrl: '',
       screenshotFileId: '',
-      mfe: '',
-      mae: '',
     });
     setPreviewUrl(null);
     onClose();
@@ -210,8 +204,6 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
       notes: formData.notes,
       screenshotUrl: formData.screenshotUrl || '',
       screenshotFileId: formData.screenshotFileId || '',
-      mfe: formData.mfe ? parseFloat(formData.mfe) : undefined,
-      mae: formData.mae ? parseFloat(formData.mae) : undefined,
     });
 
     clearFormDataAndClose();
@@ -352,31 +344,6 @@ export const AddTradeModal = ({ open, onClose, onSave, editingTrade, initialDate
                 value={formData.lotSize}
                 onChange={(e) => setFormData({ ...formData, lotSize: e.target.value })}
                 required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="mfe">MFE — Max Favorable ($) <span className="text-muted-foreground font-normal text-xs">Optional</span></Label>
-              <Input
-                id="mfe"
-                type="number"
-                step="0.01"
-                placeholder="Peak profit during trade"
-                value={formData.mfe}
-                onChange={(e) => setFormData({ ...formData, mfe: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="mae">MAE — Max Adverse ($) <span className="text-muted-foreground font-normal text-xs">Optional</span></Label>
-              <Input
-                id="mae"
-                type="number"
-                step="0.01"
-                placeholder="Worst drawdown during trade"
-                value={formData.mae}
-                onChange={(e) => setFormData({ ...formData, mae: e.target.value })}
               />
             </div>
           </div>

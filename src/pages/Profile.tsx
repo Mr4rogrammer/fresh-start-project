@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, ShieldCheck, QrCode, Key, ArrowLeft, Palette, RotateCcw } from "lucide-react";
+import { Shield, ShieldCheck, QrCode, Key, ArrowLeft, Palette, RotateCcw, Download, Smartphone, CheckCircle2, CloudUpload, Loader2, HardDrive, Send, Bot, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { ref, set, get, remove } from "firebase/database";
 import { db } from "@/lib/firebase";
@@ -14,9 +14,13 @@ import { generateTotpSecret, verifyTotpToken, generateQrCodeUrl } from "@/lib/to
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 import { applyThemeColor } from "@/components/ThemeProvider";
+import { backupToGoogleDrive, listBackups } from "@/lib/backup";
+import { loadTelegramConfig, saveTelegramConfig, testTelegramConnection, TelegramConfig } from "@/lib/telegram";
+import { useTradingRules, DEFAULT_RULES, TradingRules } from "@/hooks/useTradingRules";
+import { Switch } from "@/components/ui/switch";
 
 const Profile = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, getAccessToken } = useAuth();
   const navigate = useNavigate();
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
@@ -28,6 +32,31 @@ const Profile = () => {
   // Theme colors
   const [primaryColor, setPrimaryColor] = useState("#6366f1");
   const [secondaryColor, setSecondaryColor] = useState("#06b6d4");
+
+  // PWA install
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  // Backup
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [lastBackup, setLastBackup] = useState<string | null>(null);
+
+  // Telegram
+  const [tgBotToken, setTgBotToken] = useState("");
+  const [tgChatId, setTgChatId] = useState("");
+  const [tgEnabled, setTgEnabled] = useState(false);
+  const [tgTesting, setTgTesting] = useState(false);
+  const [tgSaving, setTgSaving] = useState(false);
+  const [tgLoaded, setTgLoaded] = useState(false);
+
+  // Trading Rules
+  const { rules, saveRules, loaded: rulesLoaded } = useTradingRules();
+  const [rulesForm, setRulesForm] = useState<TradingRules>(DEFAULT_RULES);
+  const [rulesSaving, setRulesSaving] = useState(false);
+
+  useEffect(() => {
+    if (rulesLoaded) setRulesForm(rules);
+  }, [rulesLoaded, rules]);
 
   const {
     isVerificationRequired,
@@ -45,9 +74,82 @@ const Profile = () => {
   useEffect(() => {
     if (user) {
       checkTotpStatus();
+      loadTelegramConfig(user.uid).then((cfg) => {
+        if (cfg) {
+          setTgBotToken(cfg.botToken);
+          setTgChatId(cfg.chatId);
+          setTgEnabled(cfg.enabled);
+        }
+        setTgLoaded(true);
+      });
     }
     loadThemeColors();
   }, [user]);
+
+  // PWA install prompt listener
+  useEffect(() => {
+    if (window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true);
+      return;
+    }
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    const installedHandler = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", installedHandler);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", installedHandler);
+    };
+  }, []);
+
+  // Load last backup info
+  useEffect(() => {
+    const saved = localStorage.getItem("last_backup_time");
+    if (saved) setLastBackup(saved);
+  }, []);
+
+  const handleBackup = async () => {
+    if (!user) return;
+    setIsBackingUp(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        toast.error("Please sign in again to authorize Google Drive access");
+        return;
+      }
+      const { fileName } = await backupToGoogleDrive(token, user.uid);
+      const now = new Date().toISOString();
+      setLastBackup(now);
+      localStorage.setItem("last_backup_time", now);
+      toast.success(`Backup saved: ${fileName}`);
+    } catch (error: any) {
+      console.error("Backup failed:", error);
+      toast.error(error.message || "Backup failed");
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      setIsInstalled(true);
+      toast.success("Tradeify installed successfully!");
+    }
+    setInstallPrompt(null);
+  };
 
   const loadThemeColors = () => {
     const savedPrimary = localStorage.getItem('theme-primary');
@@ -225,6 +327,65 @@ const Profile = () => {
     setTotpSecret("");
     setTotpUri("");
     setVerificationCode("");
+  };
+
+  // ─── Telegram handlers ───────────────────────────────────────────
+  const handleTgSave = async () => {
+    if (!user) return;
+    if (!tgBotToken.trim() || !tgChatId.trim()) {
+      toast.error("Please fill in both Bot Token and Chat ID");
+      return;
+    }
+    setTgSaving(true);
+    try {
+      await saveTelegramConfig(user.uid, {
+        botToken: tgBotToken.trim(),
+        chatId: tgChatId.trim(),
+        enabled: tgEnabled,
+      });
+      toast.success("Telegram settings saved!");
+    } catch {
+      toast.error("Failed to save Telegram settings");
+    } finally {
+      setTgSaving(false);
+    }
+  };
+
+  const handleTgToggle = async () => {
+    if (!user) return;
+    const newEnabled = !tgEnabled;
+    setTgEnabled(newEnabled);
+    try {
+      await saveTelegramConfig(user.uid, {
+        botToken: tgBotToken.trim(),
+        chatId: tgChatId.trim(),
+        enabled: newEnabled,
+      });
+      toast.success(newEnabled ? "Telegram notifications enabled" : "Telegram notifications disabled");
+    } catch {
+      setTgEnabled(!newEnabled);
+      toast.error("Failed to update");
+    }
+  };
+
+  const handleTgTest = async () => {
+    if (!tgBotToken.trim() || !tgChatId.trim()) {
+      toast.error("Please enter Bot Token and Chat ID first");
+      return;
+    }
+    setTgTesting(true);
+    try {
+      const ok = await testTelegramConnection(tgBotToken.trim(), tgChatId.trim());
+      if (ok) {
+        toast.success("Test message sent! Check your Telegram.");
+      } else {
+        toast.error("Failed to send. Check your token and chat ID.");
+      }
+    } catch {
+      toast.error("Connection failed");
+    } finally {
+      setTgTesting(false);
+    }
   };
 
   if (loading) {
@@ -413,7 +574,273 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {/* Theme Customization Card */}
+          {/* Data Backup Card */}
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow animate-fade-in">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Scale className="h-5 w-5 text-primary" />
+                Trading Rules
+              </CardTitle>
+              <CardDescription>Set discipline rules — get warned when you break them</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Rules Enabled</Label>
+                <Switch
+                  checked={rulesForm.enabled}
+                  onCheckedChange={(checked) => setRulesForm(prev => ({ ...prev, enabled: checked }))}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Max Trades Per Day</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={rulesForm.maxTradesPerDay}
+                    onChange={(e) => setRulesForm(prev => ({ ...prev, maxTradesPerDay: parseInt(e.target.value) || 0 }))}
+                    className="mt-1"
+                    placeholder="0 = unlimited"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no limit</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Max Daily Loss ($)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={rulesForm.maxLossPerDay}
+                    onChange={(e) => setRulesForm(prev => ({ ...prev, maxLossPerDay: parseFloat(e.target.value) || 0 }))}
+                    className="mt-1"
+                    placeholder="0 = unlimited"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no limit</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Stop After Consecutive Losses</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={rulesForm.stopAfterConsecutiveLosses}
+                    onChange={(e) => setRulesForm(prev => ({ ...prev, stopAfterConsecutiveLosses: parseInt(e.target.value) || 0 }))}
+                    className="mt-1"
+                    placeholder="0 = disabled"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = disabled</p>
+                </div>
+              </div>
+
+              <Button
+                onClick={async () => {
+                  setRulesSaving(true);
+                  try {
+                    await saveRules(rulesForm);
+                    toast.success("Trading rules saved");
+                  } catch {
+                    toast.error("Failed to save rules");
+                  } finally {
+                    setRulesSaving(false);
+                  }
+                }}
+                disabled={rulesSaving}
+                className="w-full gap-2"
+              >
+                {rulesSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Save Rules
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Data Backup Card */}
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow animate-fade-in">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <HardDrive className="h-5 w-5 text-primary" />
+                Data Backup
+              </CardTitle>
+              <CardDescription>Backup all your data to Google Drive</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
+                <p className="text-sm text-muted-foreground">
+                  Export all your challenges, trades, journals, notes, links, checklists, and settings as a JSON file to your Google Drive.
+                </p>
+              </div>
+              {lastBackup && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-profit" />
+                  Last backup: {new Date(lastBackup).toLocaleString()}
+                </div>
+              )}
+              <Button
+                onClick={handleBackup}
+                disabled={isBackingUp}
+                variant="gradient"
+                className="w-full gap-2"
+              >
+                {isBackingUp ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Backing up...
+                  </>
+                ) : (
+                  <>
+                    <CloudUpload className="h-4 w-4" />
+                    Backup to Google Drive
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Telegram Notifications Card */}
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow animate-fade-in">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Send className="h-5 w-5 text-[#229ED9]" />
+                Telegram Notifications
+              </CardTitle>
+              <CardDescription>Get kill zone alerts and goal notifications on Telegram</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted/50 rounded-xl p-4 border border-border/50 space-y-2">
+                <p className="text-xs text-muted-foreground">1. Open Telegram → search <b>@BotFather</b> → send <code>/newbot</code> → copy the token</p>
+                <p className="text-xs text-muted-foreground">2. Search <b>@userinfobot</b> → it replies with your Chat ID</p>
+                <p className="text-xs text-muted-foreground">3. <b>Start a chat with your bot</b> (send /start)</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tg-token" className="text-sm">Bot Token</Label>
+                  <Input
+                    id="tg-token"
+                    type="password"
+                    placeholder="123456:ABC-DEF..."
+                    value={tgBotToken}
+                    onChange={(e) => setTgBotToken(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tg-chatid" className="text-sm">Chat ID</Label>
+                  <Input
+                    id="tg-chatid"
+                    placeholder="1234567890"
+                    value={tgChatId}
+                    onChange={(e) => setTgChatId(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-muted/30 rounded-lg px-4 py-3 border border-border/50">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Notifications {tgEnabled ? "enabled" : "disabled"}</span>
+                </div>
+                <button
+                  onClick={handleTgToggle}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    tgEnabled ? "bg-profit" : "bg-muted-foreground/30"
+                  }`}
+                  disabled={!tgBotToken.trim() || !tgChatId.trim()}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      tgEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleTgSave}
+                  disabled={tgSaving || !tgBotToken.trim() || !tgChatId.trim()}
+                  variant="gradient"
+                  className="flex-1 gap-2"
+                  size="sm"
+                >
+                  {tgSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Save
+                </Button>
+                <Button
+                  onClick={handleTgTest}
+                  disabled={tgTesting || !tgBotToken.trim() || !tgChatId.trim()}
+                  variant="outline"
+                  className="flex-1 gap-2"
+                  size="sm"
+                >
+                  {tgTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                  Test
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Install App Card */}
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow animate-fade-in">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Smartphone className="h-5 w-5 text-primary" />
+                Install App
+              </CardTitle>
+              <CardDescription>Install Tradeify on your device for quick access</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isInstalled ? (
+                <div className="bg-profit/15 dark:bg-profit/20 rounded-xl p-4 border-2 border-profit/40">
+                  <div className="flex items-center gap-2 text-profit dark:text-profit-light mb-1">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <p className="font-semibold text-sm">App is installed</p>
+                  </div>
+                  <p className="text-xs text-profit/80 dark:text-profit-light/80">
+                    Tradeify is installed on your device. You can access it from your home screen.
+                  </p>
+                </div>
+              ) : installPrompt ? (
+                <div className="space-y-3">
+                  <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20">
+                        <Download className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Ready to install</p>
+                        <p className="text-xs text-muted-foreground">Get quick access from your home screen with offline support</p>
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={handleInstallApp} variant="gradient" className="w-full gap-2">
+                    <Download className="h-4 w-4" />
+                    Install Tradeify
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Install Tradeify as an app on your device:
+                    </p>
+                    <div className="space-y-2 text-xs text-muted-foreground">
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono font-bold text-primary">Chrome/Edge:</span>
+                        <span>Click the install icon in the address bar</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono font-bold text-primary">Safari (iOS):</span>
+                        <span>Tap Share → "Add to Home Screen"</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="font-mono font-bold text-primary">Android:</span>
+                        <span>Tap menu → "Add to Home screen"</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
         </div>
 

@@ -14,7 +14,12 @@ import {
   Link as LinkIcon,
   CheckSquare,
   Sparkles,
-  BookOpen
+  BookOpen,
+  ImageIcon,
+  CalendarPlus,
+  Bell,
+  Calculator,
+  Target,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/ThemeProvider";
@@ -33,6 +38,8 @@ import {
 import { useTotpVerification } from "@/hooks/useTotpVerification";
 import { TotpVerificationModal } from "@/components/TotpVerificationModal";
 import { cn } from "@/lib/utils";
+import { AddReminderModal } from "@/components/AddReminderModal";
+import { useState } from "react";
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -41,6 +48,7 @@ export const Navbar = () => {
   const { theme, setTheme } = useTheme();
   const { selectedChallenge, setSelectedChallenge } = useChallenge();
   const { challenges } = useData();
+  const [isReminderOpen, setIsReminderOpen] = useState(false);
   
   const {
     isVerificationRequired,
@@ -194,6 +202,27 @@ export const Navbar = () => {
                         <LinkIcon className="h-4 w-4" />
                         Links
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/model")} className="cursor-pointer gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Model
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/risk-calculator")} className="cursor-pointer gap-2">
+                        <Calculator className="h-4 w-4" />
+                        Risk Calculator
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/goals")} className="cursor-pointer gap-2">
+                        <Target className="h-4 w-4" />
+                        Goals
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/reminders")} className="cursor-pointer gap-2">
+                        <Bell className="h-4 w-4" />
+                        Reminders
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsReminderOpen(true)} className="cursor-pointer gap-2">
+                        <CalendarPlus className="h-4 w-4" />
+                        Quick Add Reminder
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -334,6 +363,27 @@ export const Navbar = () => {
                   <LinkIcon className="h-4 w-4" />
                   Links
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/model")} className="cursor-pointer gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Model
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/risk-calculator")} className="cursor-pointer gap-2">
+                  <Calculator className="h-4 w-4" />
+                  Risk Calculator
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/goals")} className="cursor-pointer gap-2">
+                  <Target className="h-4 w-4" />
+                  Goals
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/reminders")} className="cursor-pointer gap-2">
+                  <Bell className="h-4 w-4" />
+                  Reminders
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsReminderOpen(true)} className="cursor-pointer gap-2">
+                  <CalendarPlus className="h-4 w-4" />
+                  Quick Add Reminder
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -347,6 +397,7 @@ export const Navbar = () => {
         title="Verify to Sign Out"
         description="Enter your 6-digit code to confirm signing out"
       />
+      <AddReminderModal open={isReminderOpen} onClose={() => setIsReminderOpen(false)} />
     </nav>
   );
 };
