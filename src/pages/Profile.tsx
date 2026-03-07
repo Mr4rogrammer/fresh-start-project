@@ -18,10 +18,13 @@ import { backupToGoogleDrive, listBackups } from "@/lib/backup";
 import { loadTelegramConfig, saveTelegramConfig, testTelegramConnection, TelegramConfig } from "@/lib/telegram";
 import { useTradingRules, DEFAULT_RULES, TradingRules } from "@/hooks/useTradingRules";
 import { Switch } from "@/components/ui/switch";
+import { useData } from "@/contexts/DataContext";
+import { AchievementBadges } from "@/components/AchievementBadges";
 
 const Profile = () => {
   const { user, loading, getAccessToken } = useAuth();
   const navigate = useNavigate();
+  const { challenges, tradesByChallenge, journalsByChallenge, notes } = useData();
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
   const [totpSecret, setTotpSecret] = useState<string>("");
@@ -574,7 +577,27 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {/* Data Backup Card */}
+          {/* Achievement Badges Card */}
+          <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow animate-fade-in lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <span className="text-lg">🏆</span>
+                Achievement Badges
+              </CardTitle>
+              <CardDescription>Track your trading milestones and unlock badges</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AchievementBadges
+                allTrades={Object.values(tradesByChallenge).flat()}
+                totalChallenges={challenges.length}
+                totalNotes={notes.length}
+                totalJournals={Object.values(journalsByChallenge).flat().length}
+                totalChecklists={0}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Trading Rules Card */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow animate-fade-in">
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2">

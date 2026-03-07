@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, RefreshCw, ChevronDown, AlertTriangle, TrendingUp, Lightbulb, Sparkles, Settings2, Loader2, RefreshCcw, KeyRound, Target, Trophy, Flame, CalendarDays } from "lucide-react";
+import { CalendarIcon, Share2, Download, X, List, FileDown, FileJson, RefreshCw, ChevronDown, AlertTriangle, TrendingUp, Lightbulb, Sparkles, Settings2, Loader2, RefreshCcw, KeyRound, Target, Trophy, Flame, CalendarDays, Volume2, Square } from "lucide-react";
 import { format, parseISO, isWithinInterval } from "date-fns";
 import { ref, get } from "firebase/database";
 import { DateRange } from "react-day-picker";
@@ -36,6 +36,7 @@ import { sendTelegramNotification } from "@/lib/telegram";
 import { TradingHeatmap } from "@/components/TradingHeatmap";
 import { PerformanceCard } from "@/components/PerformanceCard";
 import { TradingQuotes } from "@/components/TradingQuotes";
+import { ReportGenerator } from "@/components/ReportGenerator";
 import {
   LineChart,
   Line,
@@ -574,6 +575,78 @@ const Dashboard = () => {
   const [keyDraft, setKeyDraft] = useState("");
   const [promptDraft, setPromptDraft] = useState("");
   const [promptSaving, setPromptSaving] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [voicesReady, setVoicesReady] = useState(false);
+
+  // Pre-load voices (they load async on many browsers)
+  useEffect(() => {
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices();
+      if (v.length > 0) setVoicesReady(true);
+    };
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
+
+  const toggleSpeech = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    if (!gemini.report) return;
+    const utterance = new SpeechSynthesisUtterance(gemini.report);
+
+    // Pick the most natural-sounding soft female voice available
+    const voices = window.speechSynthesis.getVoices();
+    // Preference order: soft/premium enhanced voices first
+    const preferredNames = [
+      "Samantha (Enhanced)",  // macOS premium — softest, most natural
+      "Samantha",             // macOS default female — soft & clear
+      "Google UK English Female", // Chrome — soft British female
+      "Microsoft Jenny",      // Windows 11 neural — very natural
+      "Karen (Enhanced)",     // macOS Australian — warm & soft
+      "Karen",                // macOS Australian female
+      "Moira",                // macOS Irish female — gentle
+      "Tessa",                // macOS South African — calm
+      "Microsoft Zira",       // Windows — clear female
+      "Fiona",                // macOS Scottish
+      "Victoria",             // macOS female
+    ];
+
+    let selectedVoice: SpeechSynthesisVoice | null = null;
+
+    // Try preferred voices first
+    for (const name of preferredNames) {
+      const match = voices.find(v => v.name.includes(name));
+      if (match) { selectedVoice = match; break; }
+    }
+
+    // Fallback: any English female voice
+    if (!selectedVoice) {
+      selectedVoice = voices.find(v =>
+        v.lang.startsWith("en") &&
+        (/female|samantha|karen|zira|jenny|fiona|victoria|tessa|moira|alice|susan/i.test(v.name))
+      ) || null;
+    }
+
+    // Fallback: any English voice
+    if (!selectedVoice) {
+      selectedVoice = voices.find(v => v.lang.startsWith("en")) || null;
+    }
+
+    if (selectedVoice) utterance.voice = selectedVoice;
+    utterance.rate = 1.0;     // normal speed
+    utterance.pitch = 0.95;   // slightly lower pitch = warmer, less sharp
+    utterance.volume = 0.9;   // natural volume
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    speechRef.current = utterance;
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const tooltipStyle = {
     backgroundColor: 'hsl(var(--popover))',
@@ -734,6 +807,12 @@ const Dashboard = () => {
                 userName={"The Hidden FT"}
                 currencySymbol={sym}
                 formatValue={fmt}
+              />
+              <ReportGenerator
+                trades={trades}
+                challengeName={selectedChallenge?.name || "Challenge"}
+                openingBalance={selectedChallenge?.openingBalance || 0}
+                currencySymbol={sym}
               />
             </div>
           </div>
@@ -1361,7 +1440,12 @@ const Dashboard = () => {
               </div>
               <div className="flex items-center gap-1">
                 {gemini.report && !gemini.loading && (
-                  <button onClick={() => gemini.generate()} className="text-muted-foreground hover:text-primary p-1.5 transition-colors rounded-lg hover:bg-muted/50" title="Regenerate">
+                  <button onClick={toggleSpeech} className={cn("p-1.5 transition-colors rounded-lg hover:bg-muted/50", isSpeaking ? "text-primary" : "text-muted-foreground hover:text-primary")} title={isSpeaking ? "Stop reading" : "Read aloud"}>
+                    {isSpeaking ? <Square className="h-3.5 w-3.5 fill-current" /> : <Volume2 className="h-3.5 w-3.5" />}
+                  </button>
+                )}
+                {gemini.report && !gemini.loading && (
+                  <button onClick={() => { window.speechSynthesis.cancel(); setIsSpeaking(false); gemini.generate(); }} className="text-muted-foreground hover:text-primary p-1.5 transition-colors rounded-lg hover:bg-muted/50" title="Regenerate">
                     <RefreshCcw className="h-3.5 w-3.5" />
                   </button>
                 )}
